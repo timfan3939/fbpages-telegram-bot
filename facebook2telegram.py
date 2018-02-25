@@ -488,8 +488,18 @@ def postToChat(post, bot, chat_id):
     '''
     Calls another function for posting and checks if it returns True.
     '''
+    bot.send_message(
+        chat_id = chat_id,
+        text = '{} updated a post.'.format(post['page']) )
+    sleep(3)
+
     if checkIfAllowedAndPost(post, bot, chat_id):
         print('Posted.')
+    
+    sleep(3)
+    bot.send_message(
+        chat_id = chat_id,
+        text = 'Post transfer complete')
 
 
 def postNewPosts(new_posts_total, chat_id):
@@ -501,21 +511,36 @@ def postNewPosts(new_posts_total, chat_id):
         time_to_sleep = settings['facebook_refresh_rate']/new_posts_total_count
     else:
         time_to_sleep = 0
+    time_to_sleep = 30
+    can_post = int( settings['facebook_refresh_rate'] / time_to_sleep ) - 1
 
     print('Posting {} new posts to Telegram...'.format(new_posts_total_count))
     for post in new_posts_total:
+        if can_post == 0:
+            break
+        can_post -= 1
+
         posts_page = post['page']
         print('Posting NEW post from page {}...'.format(posts_page))
         try:
             postToChat(post, bot, chat_id)
-            last_posts_dates[posts_page] = parsePostDate(post)
-            dumpDatesJSON(last_posts_dates, dates_path)
         except BadRequest:
             print('Error: Telegram could not send the message')
+            bot.send_message( chat_id = chat_id, text = 'Bad Request Exception')
             #raise
-            continue
+        except KeyError:
+            print('Error: Got Key Error, ignore it')
+            bot.send_message( chat_id = chat_id, text = 'Key Error Exception')
+        except Exception as e:
+            msg = 'Unknown Error: {} when processing page {}'.format( type(e), posts_page )
+            print(msg)
+            bot.send_message( chat_id = chat_id, text = msg )
+        finally:
+            last_posts_dates[posts_page] = parsePostDate(post)
+            dumpDatesJSON(last_posts_dates, dates_path)
         print('Waiting {} seconds before next post...'.format(time_to_sleep))
         sleep(int(time_to_sleep))
+    print('{} posts posted to Telegram'.format(new_posts_total_count))
 
 
 def getNewPosts(facebook_pages, pages_dict, last_posts_dates):
