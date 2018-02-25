@@ -490,7 +490,9 @@ def postToChat(post, bot, chat_id):
     '''
     bot.send_message(
         chat_id = chat_id,
-        text = '{} updated a post.'.format(post['page']) )
+        text = '{} updated a post.\n\n>>> [Link to the Post]({}) <<<'.format(post['page'],post['permalink_url']),
+        parse_mode='Markdown',
+        disable_web_page_preview=True )
     sleep(3)
 
     if checkIfAllowedAndPost(post, bot, chat_id):
@@ -595,7 +597,7 @@ def periodicCheck(bot, job):
             fields='name,\
                     posts{\
                           created_time,type,message,full_picture,story,\
-                          source,link,caption,parent_id,object_id}',
+                          source,link,caption,parent_id,object_id,permalink_url}',
             locale=settings['locale'])
 
         #If there is an admin chat ID in the settings file
