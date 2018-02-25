@@ -28,7 +28,7 @@ from youtube_dl import utils
 
 #Logging
 logging.basicConfig(
-    filename='facebook2telegram.log',
+    filename='process.log',
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO)
 logger = logging.getLogger(__name__)
