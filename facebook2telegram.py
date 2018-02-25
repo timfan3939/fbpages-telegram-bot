@@ -508,11 +508,6 @@ def postNewPosts(new_posts_total, chat_id):
     global last_posts_dates
     new_posts_total_count = len(new_posts_total)
 
-    #Distribute posts between Facebook checks
-    if new_posts_total_count > 0:
-        time_to_sleep = settings['facebook_refresh_rate']/new_posts_total_count
-    else:
-        time_to_sleep = 0
     time_to_sleep = 30
     can_post = int( settings['facebook_refresh_rate'] / time_to_sleep ) - 1
 
