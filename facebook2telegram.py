@@ -80,18 +80,18 @@ def loadSettingsFile(filename):
         settings['channel_id'] = config.get('telegram', 'channel')
         settings['admin_id'] = config.get('telegram', 'admin')
 
-        print('Loaded settings:')
-        print('Locale: ' + settings['locale'])
+        logger.info('Loaded settings:')
+        logger.info('Locale: {}'.format( str(settings['locale'] ) ) )
         if settings['admin_id']:
-            print('Admin ID: ' + settings['admin_id'])
-        print('Channel: ' + settings['channel_id'])
-        print('Refresh rate: ' + str(settings['facebook_refresh_rate']))
-        print('Allow Status: ' + str(settings['allow_status']))
-        print('Allow Photo: ' + str(settings['allow_photo']))
-        print('Allow Video: ' + str(settings['allow_video']))
-        print('Allow Link: ' + str(settings['allow_link']))
-        print('Allow Shared: ' + str(settings['allow_shared']))
-        print('Allow Message: ' + str(settings['allow_message']))
+            logger.info('Admin ID: {}'.format( settings['admin_id'] ) )
+        logger.info('Channel: ' + settings['channel_id'])
+        logger.info('Refresh rate: ' + str(settings['facebook_refresh_rate']))
+        logger.info('Allow Status: ' + str(settings['allow_status']))
+        logger.info('Allow Photo: ' + str(settings['allow_photo']))
+        logger.info('Allow Video: ' + str(settings['allow_video']))
+        logger.info('Allow Link: ' + str(settings['allow_link']))
+        logger.info('Allow Shared: ' + str(settings['allow_shared']))
+        logger.info('Allow Message: ' + str(settings['allow_message']))
 
     except configparser.NoSectionError:
         sys.exit('Fatal Error: Missing or invalid settings file.')
@@ -181,7 +181,7 @@ def loadDatesJSON(last_posts_dates, filename):
     with open(filename, 'r') as f:
         loaded_json = json.load(f, object_pairs_hook=dateTimeDecoder)
 
-    print('Loaded JSON file.')
+    logger.info('Loaded JSON file.')
     return loaded_json
 
 
@@ -194,7 +194,7 @@ def dumpDatesJSON(last_posts_dates, filename):
         json.dump(last_posts_dates, f,
                   sort_keys=True, indent=4, cls=dateTimeEncoder)
 
-    print('Dumped JSON file.')
+    logger.info('Dumped JSON file.')
     return True
 
 
@@ -206,7 +206,7 @@ def getMostRecentPostsDates(facebook_pages, filename):
     The .json file is used to keep track of the latest posts posted to
     Telegram in case the bot is restarted after being down for a while.
     '''
-    print('Getting most recent posts dates...')
+    logger.info('Getting most recent posts dates...')
 
     global start_time
     global last_posts_dates
@@ -215,22 +215,22 @@ def getMostRecentPostsDates(facebook_pages, filename):
                 ids=facebook_pages,
                 fields='name,posts.limit(1){created_time}')
 
-    print('Trying to load JSON file...')
+    logger.info('Trying to load JSON file...')
 
     try:
         last_posts_dates = loadDatesJSON(last_posts_dates, filename)
 
         for page in facebook_pages:
             if page not in last_posts_dates:
-                print('Checking if page '+page+' went online...')
+                logger.info('Checking if page '+page+' went online...')
 
                 try:
                     last_post = last_posts[page]['posts']['data'][0]
                     last_posts_dates[page] = parsePostDate(last_post)
-                    print('Page: '+last_posts[page]['name']+' went online.')
+                    logger.info('Page: '+last_posts[page]['name']+' went online.')
                     dumpDatesJSON(last_posts_dates, filename)
                 except KeyError:
-                    print('Page '+page+' not found.')
+                    logger.warning('Page '+page+' not found.')
 
         start_time = 0.0 #Makes the job run its callback function immediately
 
@@ -241,9 +241,9 @@ def getMostRecentPostsDates(facebook_pages, filename):
             try:
                 last_post = last_posts[page]['posts']['data'][0]
                 last_posts_dates[page] = parsePostDate(last_post)
-                print('Checked page: '+last_posts[page]['name'])
+                logger.info('Checked page: '+last_posts[page]['name'])
             except KeyError:
-                print('Page '+page+' not found.')
+                logger.warning('Page '+page+' not found.')
 
         dumpDatesJSON(last_posts_dates, filename)
 
@@ -252,7 +252,7 @@ def getDirectURLVideo(video_id):
     '''
     Get direct URL for the video using GraphAPI and the post's 'object_id'
     '''
-    print('Getting direct URL...')
+    logger.info('Getting direct URL...')
     video_post = graph.get_object(
             id=video_id,
             fields='source')
@@ -276,7 +276,7 @@ def getDirectURLVideoYDL(URL):
 
         return video['url']
     except youtube_dl.utils.DownloadError:
-        print('youtube-dl failed to parse URL.')
+        logger.info('youtube-dl failed to parse URL.')
         return None
 
 
@@ -297,9 +297,9 @@ def postPhotoToChat(post, post_message, bot, chat_id):
         '''If the picture can't be sent using its URL,
         it is downloaded locally and uploaded to Telegram.'''
         try:
-            print('Sending by URL failed, downloading file...')
+            logger.info('Sending by URL failed, downloading file...')
             request.urlretrieve(direct_link, dir_path+'/temp.jpg')
-            print('Sending file...')
+            logger.info('Sending file...')
             with open(dir_path+'/temp.jpg', 'rb') as picture:
                 message = bot.send_photo(
                     chat_id=chat_id,
@@ -311,8 +311,8 @@ def postPhotoToChat(post, post_message, bot, chat_id):
         except TimedOut:
             '''If there is a timeout, try again with a higher
             timeout value for 'bot.send_photo' '''
-            print('File upload timed out, trying again...')
-            print('Sending file...')
+            logger.warning('File upload timed out, trying again...')
+            logger.info('Sending file...')
             with open(dir_path+'/temp.jpg', 'rb') as picture:
                 message = bot.send_photo(
                     chat_id=chat_id,
@@ -323,7 +323,7 @@ def postPhotoToChat(post, post_message, bot, chat_id):
             return message
 
         except BadRequest:
-            print('Could not send photo file, sending link...')
+            logger.warning('Could not send photo file, sending link...')
             bot.send_message(    #Send direct link as a message
                 chat_id=chat_id,
                 text=direct_link+'\n'+post_message)
@@ -343,7 +343,7 @@ def postVideoToChat(post, post_message, bot, chat_id):
     """
     #If youtube link, post the link
     if 'caption' in post and post['caption'] == 'youtube.com':
-        print('Sending YouTube link...')
+        logger.info('Sending YouTube link...')
         bot.send_message(
             chat_id=chat_id,
             text=post['link'])
@@ -360,7 +360,7 @@ def postVideoToChat(post, post_message, bot, chat_id):
 
         except TelegramError:        #If the API can't send the video
             try:
-                print('Could not post video, trying youtube-dl...')
+                logger.info('Could not post video, trying youtube-dl...')
                 message = bot.send_video(
                     chat_id=chat_id,
                     video=getDirectURLVideoYDL(post['link']),
@@ -369,7 +369,7 @@ def postVideoToChat(post, post_message, bot, chat_id):
 
             except TelegramError:
                 try:
-                    print('Could not post video, trying smaller res...')
+                    logger.warning('Could not post video, trying smaller res...')
                     message = bot.send_video(
                         chat_id=chat_id,
                         video=post['source'],
@@ -378,10 +378,10 @@ def postVideoToChat(post, post_message, bot, chat_id):
 
                 except TelegramError:    #If it still can't send the video
                     try:
-                        print('Sending by URL failed, downloading file...')
+                        logger.warning('Sending by URL failed, downloading file...')
                         request.urlretrieve(post['source'],
                                             dir_path+'/temp.mp4')
-                        print('Sending file...')
+                        logger.info('Sending file...')
                         with open(dir_path+'/temp.mp4', 'rb') as video:
                             message = bot.send_video(
                                 chat_id=chat_id,
@@ -391,7 +391,7 @@ def postVideoToChat(post, post_message, bot, chat_id):
                         remove(dir_path+'/temp.mp4')   #Delete the temp video
                         return message
                     except NetworkError:
-                        print('Could not post video, sending link...')
+                        logger.warning('Could not post video, sending link...')
                         message = bot.send_message(#Send direct link as message
                             chat_id=chat_id,
                             text=direct_link+'\n'+post_message)
@@ -421,13 +421,13 @@ def checkIfAllowedAndPost(post, bot, chat_id):
     '''
     #If it's a shared post, call this function for the parent post
     if 'parent_id' in post and settings['allow_shared']:
-        print('This is a shared post.')
+        logger.info('This is a shared post.')
         parent_post = graph.get_object(
             id=post['parent_id'],
             fields='created_time,type,message,full_picture,story,\
                     source,link,caption,parent_id,object_id',
             locale=settings['locale'])
-        print('Accessing parent post...')
+        logger.info('Accessing parent post...')
         checkIfAllowedAndPost(parent_post, bot, chat_id)
         return True
 
@@ -451,36 +451,36 @@ def checkIfAllowedAndPost(post, bot, chat_id):
         send_separate = False
 
     if post['type'] == 'photo' and settings['allow_photo']:
-        print('Posting photo...')
+        logger.info('Posting photo...')
         media_message = postPhotoToChat(post, post_message, bot, chat_id)
         if send_separate:
             media_message.reply_text(separate_message)
         return True
     elif post['type'] == 'video' and settings['allow_video']:
-        print('Posting video...')
+        logger.info('Posting video...')
         media_message = postVideoToChat(post, post_message, bot, chat_id)
         if send_separate:
             media_message.reply_text(separate_message)
         return True
     elif post['type'] == 'status' and settings['allow_status']:
-        print('Posting status...')
+        logger.info('Posting status...')
         try:
             bot.send_message(
                 chat_id=chat_id,
                 text=post['message'])
             return True
         except KeyError:
-            print('Message not found, posting story...')
+            logger.warning('Message not found, posting story...')
             bot.send_message(
                 chat_id=chat_id,
                 text=post['story'])
             return True
     elif post['type'] == 'link' and settings['allow_link']:
-        print('Posting link...')
+        logger.info('Posting link...')
         postLinkToChat(post, post_message, bot, chat_id)
         return True
     else:
-        print('This post is a {}, skipping...'.format(post['type']))
+        logger.warning('This post is a {}, skipping...'.format(post['type']))
         return False
 
 
@@ -494,7 +494,9 @@ def postToChat(post, bot, chat_id):
     sleep(3)
 
     if checkIfAllowedAndPost(post, bot, chat_id):
-        print('Posted.')
+        logger.info('Posted.')
+    else:
+        logger.warning('Failed.')
     
     sleep(3)
     bot.send_message(
@@ -514,33 +516,33 @@ def postNewPosts(new_posts_total, chat_id):
     time_to_sleep = 30
     can_post = int( settings['facebook_refresh_rate'] / time_to_sleep ) - 1
 
-    print('Posting {} new posts to Telegram...'.format(new_posts_total_count))
+    logger.info('Posting {} new posts to Telegram...'.format(new_posts_total_count))
     for post in new_posts_total:
         if can_post == 0:
             break
         can_post -= 1
 
         posts_page = post['page']
-        print('Posting NEW post from page {}...'.format(posts_page))
+        logger.info('Posting NEW post from page {}...'.format(posts_page))
         try:
             postToChat(post, bot, chat_id)
         except BadRequest:
-            print('Error: Telegram could not send the message')
+            logger.error('Error: Telegram could not send the message')
             bot.send_message( chat_id = chat_id, text = 'Bad Request Exception')
             #raise
         except KeyError:
-            print('Error: Got Key Error, ignore it')
+            logger.error('Error: Got Key Error, ignore it')
             bot.send_message( chat_id = chat_id, text = 'Key Error Exception')
         except Exception as e:
             msg = 'Unknown Error: {} when processing page {}'.format( type(e), posts_page )
-            print(msg)
+            logger.error(msg)
             bot.send_message( chat_id = chat_id, text = msg )
         finally:
             last_posts_dates[posts_page] = parsePostDate(post)
             dumpDatesJSON(last_posts_dates, dates_path)
-        print('Waiting {} seconds before next post...'.format(time_to_sleep))
+        logger.info('Waiting {} seconds before next post...'.format(time_to_sleep))
         sleep(int(time_to_sleep))
-    print('{} posts posted to Telegram'.format(new_posts_total_count))
+    logger.info('{} posts posted to Telegram'.format(new_posts_total_count))
 
 
 def getNewPosts(facebook_pages, pages_dict, last_posts_dates):
@@ -548,7 +550,7 @@ def getNewPosts(facebook_pages, pages_dict, last_posts_dates):
     new_posts_total = []
     for page in facebook_pages:
         try:
-            print('Getting list of posts for page {}...'.format(
+            logger.info('Getting list of posts for page {}...'.format(
                                                     pages_dict[page]['name']))
 
             #List of last 25 posts for current page. Every post is a dict.
@@ -560,22 +562,22 @@ def getNewPosts(facebook_pages, pages_dict, last_posts_dates):
                 posts_data))
 
             if not new_posts:
-                print('No new posts for this page.')
+                logger.info('No new posts for this page.')
                 continue    #Goes to next iteration (page)
             else:
-                print('Found {} new posts for this page.'.format(len(new_posts)))
+                logger.info('Found {} new posts for this page.'.format(len(new_posts)))
                 for post in new_posts: #For later identification
                     post['page'] = page
                 new_posts_total = new_posts_total + new_posts
         #If 'page' is not present in 'pages_dict' returned by the GraphAPI
         except KeyError:
-            print('Page not found.')
+            logger.warning('Page not found.')
             continue
-    print('Checked all pages.')
+    logger.info('Checked all pages.')
 
     #Sorts the list of new posts in chronological order
     new_posts_total.sort(key=lambda post: parsePostDate(post))
-    print('Sorted posts by chronological order.')
+    logger.info('Sorted posts by chronological order.')
 
     return new_posts_total
 
@@ -589,7 +591,7 @@ def periodicCheck(bot, job):
     '''
     global last_posts_dates
     chat_id = job.context
-    print('Accessing Facebook...')
+    logger.info('Accessing Facebook...')
 
     try:
         #Request to the GraphAPI with all the pages (list) and required fields
@@ -610,15 +612,15 @@ def periodicCheck(bot, job):
                     text='Successfully fetched Facebook posts.')
 
             except TelegramError:
-                print('Admin ID not found.')
-                print('Successfully fetched Facebook posts.')
+                logger.warning('Admin ID not found.')
+                logger.info('Successfully fetched Facebook posts.')
 
         else:
-            print('Successfully fetched Facebook posts.')
+            logger.info('Successfully fetched Facebook posts.')
 
     #Error in the Facebook API
     except facebook.GraphAPIError:
-        print('Error: Could not get Facebook posts.')
+        logger.error('Error: Could not get Facebook posts.')
         '''
         TODO: 'get_object' for every page individually, due to a bug
         in the Graph API that makes some pages return an OAuthException 1,
@@ -632,16 +634,16 @@ def periodicCheck(bot, job):
 
     new_posts_total = getNewPosts(facebook_pages, pages_dict, last_posts_dates)
 
-    print('Checked all posts. Next check in '
+    logger.info('Checked all posts. Next check in '
           +str(settings['facebook_refresh_rate'])
           +' seconds.')
 
     postNewPosts(new_posts_total, chat_id)
 
     if new_posts_total:
-        print('Posted all new posts.')
+        logger.info('Posted all new posts.')
     else:
-        print('No new posts.')
+        logger.info('No new posts.')
 
 
 def createCheckJob(bot):
@@ -650,15 +652,15 @@ def createCheckJob(bot):
     '''
     job_queue.run_repeating(periodicCheck, settings['facebook_refresh_rate'],
                             first=start_time, context=settings['channel_id'])
-    print('Job created.')
+    logger.info('Job created.')
     if settings['admin_id']:
         try:
             bot.send_message(
                 chat_id=settings['admin_id'],
                 text='Bot Started.')
         except TelegramError:
-            print('Admin ID not found.')
-            print('Bot Started.')
+            logger.warning('Admin ID not found.')
+            logger.info('Bot Started.')
 
 
 def error(bot, update, error):
