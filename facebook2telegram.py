@@ -499,7 +499,7 @@ def postToChat(post, bot, chat_id):
         logger.info('Posted.')
     else:
         logger.warning('Failed.')
-    
+
     sleep(3)
     bot.send_message(
         chat_id = chat_id,
