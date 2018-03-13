@@ -1,3 +1,4 @@
 botsettings.ini
 dates.json
 *.log
+log/*

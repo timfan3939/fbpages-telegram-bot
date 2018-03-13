@@ -3,6 +3,7 @@ import ast                                      #Used for pages list in ini
 import configparser                             #Used for loading configs
 import json                                     #Used for tacking last dates
 import logging                                  #Used for logging
+import logging.handlers
 from os import remove
 from os import path
 import sys                                      #Used for exiting the program
@@ -27,11 +28,10 @@ from youtube_dl import utils
 #Global Variables
 
 #Logging
-logging.basicConfig(
-    filename='process.log',
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO)
+logging.basicConfig()
 logger = logging.getLogger(__name__)
+logger.addHandler( logging.handlers.TimedRotatingFileHandler('log/fb2tg.log',when='D') )
+
 
 #youtube-dl
 ydl = youtube_dl.YoutubeDL({'outtmpl': '%(id)s%(ext)s'})
