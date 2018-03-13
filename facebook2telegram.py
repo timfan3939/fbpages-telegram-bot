@@ -481,6 +481,7 @@ def checkIfAllowedAndPost(post, bot, chat_id):
         return True
     else:
         logger.warning('This post is a {}, skipping...'.format(post['type']))
+        bot.send_message("The post's type is {}, skipping".format(post['type']))
         return False
 
 
