@@ -28,9 +28,14 @@ from youtube_dl import utils
 #Global Variables
 
 #Logging
-logging.basicConfig()
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO,
+    handlers = [ logging.handlers.TimedRotatingFileHandler('log/fb2tg.log',when='D') ] )
 logger = logging.getLogger(__name__)
-logger.addHandler( logging.handlers.TimedRotatingFileHandler('log/fb2tg.log',when='D') )
+#logger.setLevel(logging.INFO)
+
+#logger.addHandler( logging.handlers.TimedRotatingFileHandler('log/fb2tg.log',when='D') )
 
 
 #youtube-dl
