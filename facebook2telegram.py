@@ -31,7 +31,11 @@ from youtube_dl import utils
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO,
-    handlers = [ logging.handlers.TimedRotatingFileHandler('log/fb2tg.log', atTime=datetime(year=2018,month=1,day=1).time() ) ] )
+    handlers = [
+        logging.handlers.TimedRotatingFileHandler(
+            filename = 'log/fb2tg.log',
+            when = 'midnight', 
+            atTime = datetime(year=2018, month=1, day=1, hour=0, minute=0, second=0).time() ) ] )
 logger = logging.getLogger(__name__)
 #logger.setLevel(logging.INFO)
 
