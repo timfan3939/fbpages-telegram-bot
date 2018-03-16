@@ -510,27 +510,19 @@ def postToChat(post, bot, chat_id):
     else:
         logger.warning('Failed.')
 
-    sleep(3)
-    bot.send_message(
-        chat_id = chat_id,
-        text = 'Post transfer complete')
-
 
 def postNewPosts(new_posts_total, chat_id):
     global last_posts_dates
     new_posts_total_count = len(new_posts_total)
 
     time_to_sleep = 30
-    can_post = int( settings['facebook_refresh_rate'] / time_to_sleep ) - 1
+    post_left = len(new_posts_total)
 
     logger.info('Posting {} new posts to Telegram...'.format(new_posts_total_count))
     for post in new_posts_total:
-        if can_post == 0:
-            break
-        can_post -= 1
-
         posts_page = post['page']
         logger.info('Posting NEW post from page {}...'.format(posts_page))
+        
         try:
             postToChat(post, bot, chat_id)
         except BadRequest:
@@ -547,6 +539,9 @@ def postNewPosts(new_posts_total, chat_id):
         finally:
             last_posts_dates[posts_page] = parsePostDate(post)
             dumpDatesJSON(last_posts_dates, dates_path)
+            post_left -= 1
+            bot.send_message( chat_id = chat_id, text = '{} post(s) left'.format(post_left) )
+
         logger.info('Waiting {} seconds before next post...'.format(time_to_sleep))
         sleep(int(time_to_sleep))
     logger.info('{} posts posted to Telegram'.format(new_posts_total_count))
