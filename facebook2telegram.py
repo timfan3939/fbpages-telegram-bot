@@ -493,6 +493,10 @@ def checkIfAllowedAndPost(post, bot, chat_id):
         bot.send_message("The post's type is {}, skipping".format(post['type']))
         return False
 
+# Check if the first message is posted to telegram
+# If posted, and encounter error afterward, the update is considered as posted
+# Otherwise, it may be the error from telegram, and should be posted again.
+headerPosted = False
 
 def postToChat(post, bot, chat_id):
     '''
@@ -504,6 +508,7 @@ def postToChat(post, bot, chat_id):
         parse_mode='Markdown',
         disable_web_page_preview=True )
     sleep(3)
+    headerPosted = True
 
     if checkIfAllowedAndPost(post, bot, chat_id):
         logger.info('Posted.')
@@ -515,13 +520,14 @@ def postNewPosts(new_posts_total, chat_id):
     global last_posts_dates
     new_posts_total_count = len(new_posts_total)
 
-    time_to_sleep = 30
+    time_to_sleep = 60
     post_left = len(new_posts_total)
 
     logger.info('Posting {} new posts to Telegram...'.format(new_posts_total_count))
     for post in new_posts_total:
         posts_page = post['page']
         logger.info('Posting NEW post from page {}...'.format(posts_page))
+        headerPosted = False
         
         try:
             postToChat(post, bot, chat_id)
@@ -537,9 +543,10 @@ def postNewPosts(new_posts_total, chat_id):
             logger.error(msg)
             bot.send_message( chat_id = chat_id, text = msg )
         finally:
-            last_posts_dates[posts_page] = parsePostDate(post)
-            dumpDatesJSON(last_posts_dates, dates_path)
-            post_left -= 1
+            if headerPosted:
+                last_posts_dates[posts_page] = parsePostDate(post)
+                dumpDatesJSON(last_posts_dates, dates_path)
+                post_left -= 1
             bot.send_message( chat_id = chat_id, text = '{} post(s) left'.format(post_left) )
 
         logger.info('Waiting {} seconds before next post...'.format(time_to_sleep))
