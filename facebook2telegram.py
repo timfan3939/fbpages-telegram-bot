@@ -502,6 +502,7 @@ def postToChat(post, bot, chat_id):
     '''
     Calls another function for posting and checks if it returns True.
     '''
+    global headerPosted
     bot.send_message(
         chat_id = chat_id,
         text = '{} updated a post.\n\n>>> [Link to the Post]({}) <<<'.format(post['page'],post['permalink_url']),
@@ -518,6 +519,7 @@ def postToChat(post, bot, chat_id):
 
 def postNewPosts(new_posts_total, chat_id):
     global last_posts_dates
+    global headerPosted
     new_posts_total_count = len(new_posts_total)
 
     time_to_sleep = 60
