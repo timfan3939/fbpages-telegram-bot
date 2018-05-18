@@ -632,6 +632,7 @@ def periodicCheck(bot, job):
     #Error in the Facebook API
     except facebook.GraphAPIError:
         logger.error('Error: Could not get Facebook posts.')
+        bot.send_message( chat_id = chat_id, text='Could not get facebook posts.' )
         '''
         TODO: 'get_object' for every page individually, due to a bug
         in the Graph API that makes some pages return an OAuthException 1,
