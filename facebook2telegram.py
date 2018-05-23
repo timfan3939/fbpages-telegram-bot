@@ -57,6 +57,7 @@ bot = None
 updater = None
 dispatcher = None
 job_queue = None
+request_seq = 0
 
 
 def loadSettingsFile(filename):
@@ -79,6 +80,7 @@ def loadSettingsFile(filename):
                                         config.get("facebook", "pages"))
         settings['facebook_refresh_rate'] = float(
                                         config.get('facebook', 'refreshrate'))
+        settings['facebook_page_per_request'] = int(config.get('facebook', 'pageperrequest'))
         settings['allow_status'] = config.getboolean('facebook', 'status')
         settings['allow_photo'] = config.getboolean('facebook', 'photo')
         settings['allow_video'] = config.getboolean('facebook', 'video')
@@ -120,7 +122,7 @@ def loadFacebookGraph(facebook_token):
     Initialize Facebook GraphAPI with the token loaded from the settings file
     '''
     global graph
-    graph = facebook.GraphAPI(access_token=facebook_token, version='2.7')
+    graph = facebook.GraphAPI(access_token=facebook_token, version='2.7', timeout=120)
 
 
 def loadTelegramBot(telegram_token):
@@ -493,17 +495,23 @@ def checkIfAllowedAndPost(post, bot, chat_id):
         bot.send_message("The post's type is {}, skipping".format(post['type']))
         return False
 
+# Check if the first message is posted to telegram
+# If posted, and encounter error afterward, the update is considered as posted
+# Otherwise, it may be the error from telegram, and should be posted again.
+headerPosted = False
 
 def postToChat(post, bot, chat_id):
     '''
     Calls another function for posting and checks if it returns True.
     '''
+    global headerPosted
     bot.send_message(
         chat_id = chat_id,
         text = '{} updated a post.\n\n>>> [Link to the Post]({}) <<<'.format(post['page'],post['permalink_url']),
         parse_mode='Markdown',
         disable_web_page_preview=True )
     sleep(3)
+    headerPosted = True
 
     if checkIfAllowedAndPost(post, bot, chat_id):
         logger.info('Posted.')
@@ -513,15 +521,17 @@ def postToChat(post, bot, chat_id):
 
 def postNewPosts(new_posts_total, chat_id):
     global last_posts_dates
+    global headerPosted
     new_posts_total_count = len(new_posts_total)
 
-    time_to_sleep = 30
+    time_to_sleep = 20
     post_left = len(new_posts_total)
 
     logger.info('Posting {} new posts to Telegram...'.format(new_posts_total_count))
     for post in new_posts_total:
         posts_page = post['page']
         logger.info('Posting NEW post from page {}...'.format(posts_page))
+        headerPosted = False
         
         try:
             postToChat(post, bot, chat_id)
@@ -537,9 +547,10 @@ def postNewPosts(new_posts_total, chat_id):
             logger.error(msg)
             bot.send_message( chat_id = chat_id, text = msg )
         finally:
-            last_posts_dates[posts_page] = parsePostDate(post)
-            dumpDatesJSON(last_posts_dates, dates_path)
-            post_left -= 1
+            if headerPosted:
+                last_posts_dates[posts_page] = parsePostDate(post)
+                dumpDatesJSON(last_posts_dates, dates_path)
+                post_left -= 1
             bot.send_message( chat_id = chat_id, text = '{} post(s) left'.format(post_left) )
 
         logger.info('Waiting {} seconds before next post...'.format(time_to_sleep))
@@ -583,6 +594,20 @@ def getNewPosts(facebook_pages, pages_dict, last_posts_dates):
 
     return new_posts_total
 
+def updateRequestList():
+    global request_seq
+    global facebook_pages
+
+    facebook_page_list = settings['facebook_pages']
+    
+    request_size = settings['facebook_page_per_request']
+    request_end = (request_seq + request_size) % len(facebook_page_list)
+    
+    facebook_pages = []
+    while request_seq != request_end:
+        facebook_pages.append( facebook_page_list[ request_seq ] )
+        logger.info('{}: {}'.format(request_seq, facebook_page_list[ request_seq ] ) )
+        request_seq = (request_seq + 1) % len(facebook_page_list)
 
 def periodicCheck(bot, job):
     '''
@@ -591,6 +616,9 @@ def periodicCheck(bot, job):
     contains the date for the latest post posted to Telegram for every
     page.
     '''
+    
+    updateRequestList()
+    
     global last_posts_dates
     chat_id = job.context
     logger.info('Accessing Facebook...')
@@ -621,8 +649,15 @@ def periodicCheck(bot, job):
             logger.info('Successfully fetched Facebook posts.')
 
     #Error in the Facebook API
-    except facebook.GraphAPIError:
-        logger.error('Error: Could not get Facebook posts.')
+    except facebook.GraphAPIError as error:
+        logger.error('Could not get Facebook posts.')
+        logger.error('Message: {}'.format(error.message))
+        logger.error('Type: {}'.format(error.type))
+        logger.error('Code: {}'.format(error.code))
+        logger.error('Result: {}'.format(error.result))
+        msg = 'Could not get facebook posts.\nMessage: {}\nType: {}\nCode: {}\nResult:{}'.format(error.message, error.type, error.code, error.result)
+        bot.send_message( chat_id = chat_id, text=msg )
+        bot.send_message( chat_id = chat_id, text=error )
         '''
         TODO: 'get_object' for every page individually, due to a bug
         in the Graph API that makes some pages return an OAuthException 1,
