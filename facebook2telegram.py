@@ -524,7 +524,7 @@ def postNewPosts(new_posts_total, chat_id):
     global headerPosted
     new_posts_total_count = len(new_posts_total)
 
-    time_to_sleep = 60
+    time_to_sleep = 20
     post_left = len(new_posts_total)
 
     logger.info('Posting {} new posts to Telegram...'.format(new_posts_total_count))
@@ -607,7 +607,7 @@ def updateRequestList():
     while request_seq != request_end:
         facebook_pages.append( facebook_page_list[ request_seq ] )
         logger.info('{}: {}'.format(request_seq, facebook_page_list[ request_seq ] ) )
-        request_seq += 1
+        request_seq = (request_seq + 1) % len(facebook_page_list)
 
 def periodicCheck(bot, job):
     '''
