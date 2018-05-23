@@ -57,6 +57,7 @@ bot = None
 updater = None
 dispatcher = None
 job_queue = None
+request_seq = 0
 
 
 def loadSettingsFile(filename):
@@ -79,6 +80,7 @@ def loadSettingsFile(filename):
                                         config.get("facebook", "pages"))
         settings['facebook_refresh_rate'] = float(
                                         config.get('facebook', 'refreshrate'))
+        settings['facebook_page_per_request'] = int(config.get('facebook', 'pageperrequest'))
         settings['allow_status'] = config.getboolean('facebook', 'status')
         settings['allow_photo'] = config.getboolean('facebook', 'photo')
         settings['allow_video'] = config.getboolean('facebook', 'video')
@@ -120,7 +122,7 @@ def loadFacebookGraph(facebook_token):
     Initialize Facebook GraphAPI with the token loaded from the settings file
     '''
     global graph
-    graph = facebook.GraphAPI(access_token=facebook_token, version='2.7')
+    graph = facebook.GraphAPI(access_token=facebook_token, version='2.7', timeout=120)
 
 
 def loadTelegramBot(telegram_token):
@@ -592,6 +594,20 @@ def getNewPosts(facebook_pages, pages_dict, last_posts_dates):
 
     return new_posts_total
 
+def updateRequestList():
+    global request_seq
+    global facebook_pages
+
+    facebook_page_list = settings['facebook_pages']
+    
+    request_size = settings['facebook_page_per_request']
+    request_end = (request_seq + request_size) % len(facebook_page_list)
+    
+    facebook_pages = []
+    while request_seq != request_end:
+        facebook_pages.append( facebook_page_list[ request_seq ] )
+        logger.info('{}: {}'.format(request_seq, facebook_page_list[ request_seq ] ) )
+        request_seq += 1
 
 def periodicCheck(bot, job):
     '''
@@ -600,6 +616,9 @@ def periodicCheck(bot, job):
     contains the date for the latest post posted to Telegram for every
     page.
     '''
+    
+    updateRequestList()
+    
     global last_posts_dates
     chat_id = job.context
     logger.info('Accessing Facebook...')
@@ -638,6 +657,7 @@ def periodicCheck(bot, job):
         logger.error('Result: {}'.format(error.result))
         msg = 'Could not get facebook posts.\nMessage: {}\nType: {}\nCode: {}\nResult:{}'.format(error.message, error.type, error.code, error.result)
         bot.send_message( chat_id = chat_id, text=msg )
+        bot.send_message( chat_id = chat_id, text=error )
         '''
         TODO: 'get_object' for every page individually, due to a bug
         in the Graph API that makes some pages return an OAuthException 1,
