@@ -315,7 +315,8 @@ def postPhotoToChat(post, post_message, bot, chat_id):
                 message = bot.send_photo(
                     chat_id=chat_id,
                     photo=picture,
-                    caption=post_message)
+                    caption=post_message,
+                    timeout=120)
             remove(dir_path+'/temp.jpg')   #Delete the temp picture
             return message
 
@@ -329,7 +330,7 @@ def postPhotoToChat(post, post_message, bot, chat_id):
                     chat_id=chat_id,
                     photo=picture,
                     caption=post_message,
-                    timeout=120)
+                    timeout=200)
             remove(dir_path+'/temp.jpg')   #Delete the temp picture
             return message
 
