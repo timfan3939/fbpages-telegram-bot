@@ -508,7 +508,7 @@ def postToChat(post, bot, chat_id):
     global headerPosted
     bot.send_message(
         chat_id = chat_id,
-        text = '{} updated a post.\n\n>>> [Link to the Post]({}) <<<'.format(post['page'],post['permalink_url']),
+        text = '{} updated a post.\n\n>>> [Link to the Post]({}) <<<\nID:{}'.format(post['pagename'],post['permalink_url'],post['page']),
         parse_mode='Markdown',
         disable_web_page_preview=True )
     sleep(3)
@@ -582,6 +582,7 @@ def getNewPosts(facebook_pages, pages_dict, last_posts_dates):
                 logger.info('Found {} new posts for this page.'.format(len(new_posts)))
                 for post in new_posts: #For later identification
                     post['page'] = page
+                    post['pagename'] = pages_dict[page]['name']
                 new_posts_total = new_posts_total + new_posts
         #If 'page' is not present in 'pages_dict' returned by the GraphAPI
         except KeyError:
