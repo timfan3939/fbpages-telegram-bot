@@ -508,7 +508,7 @@ def postToChat(post, bot, chat_id):
     global headerPosted
     bot.send_message(
         chat_id = chat_id,
-        text = '{} updated a post.\n\n>>> [Link to the Post]({}) <<<\nID:{}'.format(post['pagename'],post['permalink_url'],post['page']),
+        text = '{} updated a post.\n\n>>> [Link to the Post]({}) <<<\nID: {}'.format(post['pagename'],post['permalink_url'],post['page']),
         parse_mode='Markdown',
         disable_web_page_preview=True )
     sleep(3)
