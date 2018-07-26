@@ -1,0 +1,13 @@
+[Unit]
+Description=Send facebook posts to telegram
+After=network.target
+
+# Filling the user name, working directory
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/some/where/in/disk/fbpages-telegram-bot
+ExecStart=/usr/bin/python3 facebook2telegram.py
+
+[Install]
+WantedBy=multi-user.target

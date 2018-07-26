@@ -2,3 +2,4 @@ botsettings.ini
 dates.json
 *.log
 log/*
+fb2tg.service
