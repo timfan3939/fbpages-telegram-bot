@@ -527,7 +527,7 @@ def postNewPosts(new_posts_total, chat_id):
     global headerPosted
     new_posts_total_count = len(new_posts_total)
 
-    time_to_sleep = 20
+    time_to_sleep = 30
     post_left = len(new_posts_total)
 
     logger.info('Posting {} new posts to Telegram...'.format(new_posts_total_count))
@@ -543,8 +543,10 @@ def postNewPosts(new_posts_total, chat_id):
             bot.send_message( chat_id = chat_id, text = 'Bad Request Exception')
             #raise
         except KeyError:
-            logger.error('Error: Got Key Error, ignore it')
-            bot.send_message( chat_id = chat_id, text = 'Key Error Exception')
+            logger.error('Error: Got Key Error, ignore the post from {}'.format(post['pagename']))
+            logger.exception(' ')
+            bot.send_message( chat_id = chat_id, text = 'Key Error Exception from page {}'.format(post['pagename']))
+            headerPosted = True
         except Exception as e:
             msg = 'Unknown Error: {} when processing page {}'.format( type(e), posts_page )
             logger.error(msg)
