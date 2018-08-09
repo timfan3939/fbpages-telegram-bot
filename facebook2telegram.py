@@ -12,7 +12,7 @@ from datetime import datetime                   #Used for date comparison
 from urllib import request                      #Used for downloading media
 
 import telegram                                 #telegram-bot-python
-from telegram.ext import Updater
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from telegram.error import TelegramError        #Error handling
 from telegram.error import InvalidToken         #Error handling
 from telegram.error import BadRequest           #Error handling
@@ -353,12 +353,16 @@ def postVideoToChat(post, post_message, bot, chat_id):
     "Fourth option": Download file locally for upload
     "Fifth option":  Send the video link
     """
-    #If youtube link, post the link
+    #If youtube link, post the link and short text if exists
     if 'caption' in post and post['caption'] == 'youtube.com':
-        logger.info('Sending YouTube link...')
-        bot.send_message(
-            chat_id=chat_id,
-            text=post['link'])
+      if post_message:
+          logger.info( 'Send post message with Youtube Link' )
+          bot.send_message( chat_id = chat_id, text = post_message )
+      else:
+          logger.info('Sending YouTube link...')
+          bot.send_message(
+              chat_id=chat_id,
+              text=post['link'])
     else:
         if 'object_id' in post:
             direct_link = getDirectURLVideo(post['object_id'])
@@ -434,6 +438,11 @@ def checkIfAllowedAndPost(post, bot, chat_id):
     #If it's a shared post, call this function for the parent post
     if 'parent_id' in post and settings['allow_shared']:
         logger.info('This is a shared post.')
+        
+        if 'message' in post:
+            bot.send_message( chat_id = chat_id, text = post['message'] )
+
+
         parent_post = graph.get_object(
             id=post['parent_id'],
             fields='created_time,type,message,full_picture,story,\
@@ -709,6 +718,12 @@ def createCheckJob(bot):
 def error(bot, update, error):
     logger.warn('Update "{}" caused error "{}"'.format(update, error))
 
+def statusHandler( bot, update ):
+    bot.send_message( chat_id = update.message.chat_id, text = 'I\'m alive.' )
+
+def echoHandler( bot, update ):
+    bot.send_message( chat_id = update.message.chat_id, text = 'Echo: {}'.format( update.message.text ) )
+
 
 def main():
     global facebook_pages
@@ -736,6 +751,8 @@ def main():
     createCheckJob(bot)
 
     #Log all errors
+    dispatcher.add_handler( CommandHandler( 'status', statusHandler ) )
+    dispatcher.add_handler( MessageHandler( Filters.text, echoHandler ) )
     dispatcher.add_error_handler(error)
 
     updater.start_polling()
