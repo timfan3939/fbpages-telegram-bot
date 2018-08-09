@@ -12,7 +12,7 @@ from datetime import datetime                   #Used for date comparison
 from urllib import request                      #Used for downloading media
 
 import telegram                                 #telegram-bot-python
-from telegram.ext import Updater
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from telegram.error import TelegramError        #Error handling
 from telegram.error import InvalidToken         #Error handling
 from telegram.error import BadRequest           #Error handling
@@ -718,6 +718,12 @@ def createCheckJob(bot):
 def error(bot, update, error):
     logger.warn('Update "{}" caused error "{}"'.format(update, error))
 
+def statusHandler( bot, update ):
+    bot.send_message( chat_id = update.message.chat_id, text = 'I\'m alive.' )
+
+def echoHandler( bot, update ):
+    bot.send_message( chat_id = update.message.chat_id, text = 'Echo: {}'.format( update.message.text ) )
+
 
 def main():
     global facebook_pages
@@ -745,6 +751,8 @@ def main():
     createCheckJob(bot)
 
     #Log all errors
+    dispatcher.add_handler( CommandHandler( 'status', statusHandler ) )
+    dispatcher.add_handler( MessageHandler( Filters.text, echoHandler ) )
     dispatcher.add_error_handler(error)
 
     updater.start_polling()
