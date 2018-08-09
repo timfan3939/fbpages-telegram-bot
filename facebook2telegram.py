@@ -353,12 +353,16 @@ def postVideoToChat(post, post_message, bot, chat_id):
     "Fourth option": Download file locally for upload
     "Fifth option":  Send the video link
     """
-    #If youtube link, post the link
+    #If youtube link, post the link and short text if exists
     if 'caption' in post and post['caption'] == 'youtube.com':
-        logger.info('Sending YouTube link...')
-        bot.send_message(
-            chat_id=chat_id,
-            text=post['link'])
+      if post_message:
+          logger.info( 'Send post message with Youtube Link' )
+          bot.send_message( chat_id = chat_id, text = post_message )
+      else:
+          logger.info('Sending YouTube link...')
+          bot.send_message(
+              chat_id=chat_id,
+              text=post['link'])
     else:
         if 'object_id' in post:
             direct_link = getDirectURLVideo(post['object_id'])
@@ -434,6 +438,11 @@ def checkIfAllowedAndPost(post, bot, chat_id):
     #If it's a shared post, call this function for the parent post
     if 'parent_id' in post and settings['allow_shared']:
         logger.info('This is a shared post.')
+        
+        if 'message' in post:
+            bot.send_message( chat_id = chat_id, text = post['message'] )
+
+
         parent_post = graph.get_object(
             id=post['parent_id'],
             fields='created_time,type,message,full_picture,story,\
