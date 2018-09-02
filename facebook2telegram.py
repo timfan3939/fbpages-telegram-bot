@@ -515,11 +515,13 @@ def postToChat(post, bot, chat_id):
     Calls another function for posting and checks if it returns True.
     '''
     global headerPosted
+
+    text = '{} updated a post at {}.\n'.format(post['pagename'].replace('_', '\_'), post['created_time']) + \
+           'ID: {}\n\n'.format(post['page']) + \
+           '>>> [Link to the Post]({}) <<<'.format(post['permalink_url'])
     bot.send_message(
         chat_id = chat_id,
-        text = '{} updated a post at {}.\n'.format(post['pagename'], post['created_time']) + \
-               'ID: {}\n\n'.format(post['page']) + \
-               '>>> [Link to the Post]({}) <<<'.format(post['permalink_url']),
+        text = text,
         parse_mode='Markdown',
         disable_web_page_preview=True )
     sleep(3)
@@ -547,8 +549,9 @@ def postNewPosts(new_posts_total, chat_id):
         
         try:
             postToChat(post, bot, chat_id)
-        except BadRequest:
+        except BadRequest as e:
             logger.error('Error: Telegram could not send the message')
+            logger.error('Message: {}'.format(e.message))
             bot.send_message( chat_id = chat_id, text = 'Bad Request Exception')
             #raise
         except KeyError:

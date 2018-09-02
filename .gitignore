@@ -3,3 +3,4 @@ dates.json
 *.log
 log/*
 fb2tg.service
+*.backup
