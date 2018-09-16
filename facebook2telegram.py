@@ -122,7 +122,7 @@ def loadFacebookGraph(facebook_token):
     Initialize Facebook GraphAPI with the token loaded from the settings file
     '''
     global graph
-    graph = facebook.GraphAPI(access_token=facebook_token, version='2.7', timeout=120)
+    graph = facebook.GraphAPI(access_token=facebook_token, version='3.0', timeout=120)
 
 
 def loadTelegramBot(telegram_token):
