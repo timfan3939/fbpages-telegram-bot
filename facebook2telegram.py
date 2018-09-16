@@ -602,7 +602,7 @@ def getNewPosts(facebook_pages, pages_dict, last_posts_dates):
                 new_posts_total = new_posts_total + new_posts
         #If 'page' is not present in 'pages_dict' returned by the GraphAPI
         except KeyError:
-            logger.warning('Page not found.')
+            logger.warning('Page not found: {}'.format( page ) )
             continue
     logger.info('Checked all pages.')
 
