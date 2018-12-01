@@ -57,6 +57,7 @@ bot = None
 updater = None
 dispatcher = None
 job_queue = None
+facebook_job = None
 request_seq = 0
 
 
@@ -677,6 +678,12 @@ def periodicCheck(bot, job):
         logger.error('Result: {}'.format(error.result))
         msg = 'Could not get facebook posts.\nMessage: {}\nType: {}\nCode: {}\nResult:{}'.format(error.message, error.type, error.code, error.result)
         bot.send_message( chat_id = chat_id, text=msg )
+
+        # Extends the refresh rate
+        settings['facebook_refresh_rate'] *= 2
+        createCheckJob( bot )
+        logger.error( 'Extend refresh rate to {}.'.format( settings['facebook_refresh_rate'] ) )
+
         '''
         TODO: 'get_object' for every page individually, due to a bug
         in the Graph API that makes some pages return an OAuthException 1,
@@ -689,6 +696,13 @@ def periodicCheck(bot, job):
         return
 
     new_posts_total = getNewPosts(facebook_pages, pages_dict, last_posts_dates)
+
+    if settings['facebook_refresh_rate'] > settings['facebook_refresh_rate_default']:
+        settings['facebook_refresh_rate'] -= ( settings['facebook_refresh_rate_default'] / 10 )
+	
+    if settings['facebook_refresh_rate'] < settings['facebook_refresh_rate_default']:
+        settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
+    createCheckJob( bot )
 
     logger.info('Checked all posts. Next check in '
           +str(settings['facebook_refresh_rate'])
@@ -706,8 +720,12 @@ def createCheckJob(bot):
     '''
     Creates a job that periodically calls the 'periodicCheck' function
     '''
-    job_queue.run_repeating(periodicCheck, settings['facebook_refresh_rate'],
-                            first=start_time, context=settings['channel_id'])
+    global facebook_job
+
+    facebook_job = job_queue.run_once( periodicCheck, settings['facebook_refresh_rate'], context = settings['channel_id'] )
+
+#    facebook_job = job_queue.run_repeating(periodicCheck, settings['facebook_refresh_rate'],
+#                            first=start_time, context=settings['channel_id'])
     logger.info('Job created.')
     if settings['admin_id']:
         try:
@@ -763,14 +781,14 @@ def main():
     facebook_pages = settings['facebook_pages']
 
     startPage = 0
-    #while startPage < len(facebook_pages):
-    #    endPage = (startPage + 40) if ( (startPage + 40) < len(facebook_pages) ) else len(facebook_pages)
-    #    getMostRecentPostsDates(facebook_pages[startPage:endPage], dates_path)
-    #    # facebook only allow requesting 50 pages at a time
-    #    startPage += 40
-    #    sleep(10)
+    while startPage < len(facebook_pages):
+        endPage = (startPage + 40) if ( (startPage + 40) < len(facebook_pages) ) else len(facebook_pages)
+        getMostRecentPostsDates(facebook_pages[startPage:endPage], dates_path)
+        # facebook only allow requesting 50 pages at a time
+        startPage += 40
+        sleep(10)
 
-    #createCheckJob(bot)
+    createCheckJob(bot)
 
     #Log all errors
     dispatcher.add_handler( CommandHandler( 'status', statusHandler ) )
