@@ -80,6 +80,8 @@ def loadSettingsFile(filename):
                                         config.get("facebook", "pages"))
         settings['facebook_refresh_rate'] = float(
                                         config.get('facebook', 'refreshrate'))
+        settings['facebook_refresh_rate_default'] = float(
+                                        config.get('facebook', 'refreshrate'))
         settings['facebook_page_per_request'] = int(config.get('facebook', 'pageperrequest'))
         settings['allow_status'] = config.getboolean('facebook', 'status')
         settings['allow_photo'] = config.getboolean('facebook', 'photo')
@@ -675,7 +677,6 @@ def periodicCheck(bot, job):
         logger.error('Result: {}'.format(error.result))
         msg = 'Could not get facebook posts.\nMessage: {}\nType: {}\nCode: {}\nResult:{}'.format(error.message, error.type, error.code, error.result)
         bot.send_message( chat_id = chat_id, text=msg )
-        bot.send_message( chat_id = chat_id, text=error )
         '''
         TODO: 'get_object' for every page individually, due to a bug
         in the Graph API that makes some pages return an OAuthException 1,
@@ -722,7 +723,25 @@ def error(bot, update, error):
     logger.warn('Update "{}" caused error "{}"'.format(update, error))
 
 def statusHandler( bot, update ):
-    bot.send_message( chat_id = update.message.chat_id, text = 'I\'m alive.' )
+    msg = str.format(
+	    'I\'m alive.\nRefresh Rate: {}',
+		settings['facebook_refresh_rate']
+	)
+    bot.send_message( chat_id = update.message.chat_id, text = msg )
+
+def startHandler( bot, update ):
+    msg = str.format(
+		'The bot has started.'
+	)
+    bot.send_message( chat_id = update.message.chat_id, text = msg )
+
+def extendHandler( bot, update ):
+    settings['facebook_refresh_rate'] = settings['facebook_refresh_rate'] * 4
+    msg = str.format(
+		'Extending the refresh rate to {}',
+		settings['facebook_refresh_rate']
+    )
+    bot.send_message( chat_id = update.message.chat_id, text = msg )
 
 def echoHandler( bot, update ):
     bot.send_message( chat_id = update.message.chat_id, text = 'Echo: {}'.format( update.message.text ) )
@@ -744,17 +763,19 @@ def main():
     facebook_pages = settings['facebook_pages']
 
     startPage = 0
-    while startPage < len(facebook_pages):
-        endPage = (startPage + 40) if ( (startPage + 40) < len(facebook_pages) ) else len(facebook_pages)
-        getMostRecentPostsDates(facebook_pages[startPage:endPage], dates_path)
-        # facebook only allow requesting 50 pages at a time
-        startPage += 40
-        sleep(10)
+    #while startPage < len(facebook_pages):
+    #    endPage = (startPage + 40) if ( (startPage + 40) < len(facebook_pages) ) else len(facebook_pages)
+    #    getMostRecentPostsDates(facebook_pages[startPage:endPage], dates_path)
+    #    # facebook only allow requesting 50 pages at a time
+    #    startPage += 40
+    #    sleep(10)
 
-    createCheckJob(bot)
+    #createCheckJob(bot)
 
     #Log all errors
     dispatcher.add_handler( CommandHandler( 'status', statusHandler ) )
+    dispatcher.add_handler( CommandHandler( 'extend', extendHandler ) )
+    dispatcher.add_handler( CommandHandler( 'start', startHandler) )
     dispatcher.add_handler( MessageHandler( Filters.text, echoHandler ) )
     dispatcher.add_error_handler(error)
 
