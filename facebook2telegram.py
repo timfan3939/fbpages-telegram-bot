@@ -761,6 +761,18 @@ def extendHandler( bot, update ):
     )
     bot.send_message( chat_id = update.message.chat_id, text = msg )
 
+def resetHandler( bot, update ):
+    settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
+    msg = 'Reset refresh rate to {}'.format( settings['facebook_refresh_rate'] )
+    bot.send_message( chat_id = update.message.chat_id, text = msg )
+
+def reduceHandler( bot, update ):
+    settings['facebook_refresh_rate'] -= ( settings['facebook_refresh_rate_default'] / 10 )
+    if settings['facebook_refresh_rate'] < settings['facebook_refresh_rate_default']:
+        settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
+    msg = 'Reduce refresh rate to {}'.format( settings['facebook_refresh_rate'] )
+    bot.send_message( chat_id = update.message.chat_id, text = msg )
+
 def echoHandler( bot, update ):
     bot.send_message( chat_id = update.message.chat_id, text = 'Echo: {}'.format( update.message.text ) )
 
@@ -794,6 +806,8 @@ def main():
     dispatcher.add_handler( CommandHandler( 'status', statusHandler ) )
     dispatcher.add_handler( CommandHandler( 'extend', extendHandler ) )
     dispatcher.add_handler( CommandHandler( 'start', startHandler) )
+    dispatcher.add_handler( CommandHandler( 'reduce', reduceHandler) )
+    dispatcher.add_handler( CommandHandler( 'reset', resetHandler) )
     dispatcher.add_handler( MessageHandler( Filters.text, echoHandler ) )
     dispatcher.add_error_handler(error)
 
