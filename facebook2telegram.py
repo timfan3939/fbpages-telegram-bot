@@ -697,8 +697,7 @@ def periodicCheck(bot, job):
 
     new_posts_total = getNewPosts(facebook_pages, pages_dict, last_posts_dates)
 
-    if settings['facebook_refresh_rate'] > settings['facebook_refresh_rate_default']:
-        settings['facebook_refresh_rate'] -= ( settings['facebook_refresh_rate_default'] / 10 )
+    settings['facebook_refresh_rate'] -= ( settings['facebook_refresh_rate_default'] / 10 )
 	
     if settings['facebook_refresh_rate'] < settings['facebook_refresh_rate_default']:
         settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
