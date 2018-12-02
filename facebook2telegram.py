@@ -57,6 +57,7 @@ bot = None
 updater = None
 dispatcher = None
 job_queue = None
+facebook_job = None
 request_seq = 0
 
 
@@ -79,6 +80,8 @@ def loadSettingsFile(filename):
         settings['facebook_pages'] = ast.literal_eval(
                                         config.get("facebook", "pages"))
         settings['facebook_refresh_rate'] = float(
+                                        config.get('facebook', 'refreshrate'))
+        settings['facebook_refresh_rate_default'] = float(
                                         config.get('facebook', 'refreshrate'))
         settings['facebook_page_per_request'] = int(config.get('facebook', 'pageperrequest'))
         settings['allow_status'] = config.getboolean('facebook', 'status')
@@ -675,7 +678,12 @@ def periodicCheck(bot, job):
         logger.error('Result: {}'.format(error.result))
         msg = 'Could not get facebook posts.\nMessage: {}\nType: {}\nCode: {}\nResult:{}'.format(error.message, error.type, error.code, error.result)
         bot.send_message( chat_id = chat_id, text=msg )
-        bot.send_message( chat_id = chat_id, text=error )
+
+        # Extends the refresh rate
+        settings['facebook_refresh_rate'] *= 2
+        createCheckJob( bot )
+        logger.error( 'Extend refresh rate to {}.'.format( settings['facebook_refresh_rate'] ) )
+
         '''
         TODO: 'get_object' for every page individually, due to a bug
         in the Graph API that makes some pages return an OAuthException 1,
@@ -688,6 +696,12 @@ def periodicCheck(bot, job):
         return
 
     new_posts_total = getNewPosts(facebook_pages, pages_dict, last_posts_dates)
+
+    settings['facebook_refresh_rate'] -= ( settings['facebook_refresh_rate_default'] / 10 )
+	
+    if settings['facebook_refresh_rate'] < settings['facebook_refresh_rate_default']:
+        settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
+    createCheckJob( bot )
 
     logger.info('Checked all posts. Next check in '
           +str(settings['facebook_refresh_rate'])
@@ -705,8 +719,12 @@ def createCheckJob(bot):
     '''
     Creates a job that periodically calls the 'periodicCheck' function
     '''
-    job_queue.run_repeating(periodicCheck, settings['facebook_refresh_rate'],
-                            first=start_time, context=settings['channel_id'])
+    global facebook_job
+
+    facebook_job = job_queue.run_once( periodicCheck, settings['facebook_refresh_rate'], context = settings['channel_id'] )
+
+#    facebook_job = job_queue.run_repeating(periodicCheck, settings['facebook_refresh_rate'],
+#                            first=start_time, context=settings['channel_id'])
     logger.info('Job created.')
     if settings['admin_id']:
         try:
@@ -722,7 +740,37 @@ def error(bot, update, error):
     logger.warn('Update "{}" caused error "{}"'.format(update, error))
 
 def statusHandler( bot, update ):
-    bot.send_message( chat_id = update.message.chat_id, text = 'I\'m alive.' )
+    msg = str.format(
+	    'I\'m alive.\nRefresh Rate: {}',
+		settings['facebook_refresh_rate']
+	)
+    bot.send_message( chat_id = update.message.chat_id, text = msg )
+
+def startHandler( bot, update ):
+    msg = str.format(
+		'The bot has started.'
+	)
+    bot.send_message( chat_id = update.message.chat_id, text = msg )
+
+def extendHandler( bot, update ):
+    settings['facebook_refresh_rate'] = settings['facebook_refresh_rate'] * 4
+    msg = str.format(
+		'Extending the refresh rate to {}',
+		settings['facebook_refresh_rate']
+    )
+    bot.send_message( chat_id = update.message.chat_id, text = msg )
+
+def resetHandler( bot, update ):
+    settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
+    msg = 'Reset refresh rate to {}'.format( settings['facebook_refresh_rate'] )
+    bot.send_message( chat_id = update.message.chat_id, text = msg )
+
+def reduceHandler( bot, update ):
+    settings['facebook_refresh_rate'] -= ( settings['facebook_refresh_rate_default'] / 10 )
+    if settings['facebook_refresh_rate'] < settings['facebook_refresh_rate_default']:
+        settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
+    msg = 'Reduce refresh rate to {}'.format( settings['facebook_refresh_rate'] )
+    bot.send_message( chat_id = update.message.chat_id, text = msg )
 
 def echoHandler( bot, update ):
     bot.send_message( chat_id = update.message.chat_id, text = 'Echo: {}'.format( update.message.text ) )
@@ -755,6 +803,10 @@ def main():
 
     #Log all errors
     dispatcher.add_handler( CommandHandler( 'status', statusHandler ) )
+    dispatcher.add_handler( CommandHandler( 'extend', extendHandler ) )
+    dispatcher.add_handler( CommandHandler( 'start', startHandler) )
+    dispatcher.add_handler( CommandHandler( 'reduce', reduceHandler) )
+    dispatcher.add_handler( CommandHandler( 'reset', resetHandler) )
     dispatcher.add_handler( MessageHandler( Filters.text, echoHandler ) )
     dispatcher.add_error_handler(error)
 
