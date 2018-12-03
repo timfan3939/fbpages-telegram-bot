@@ -11,6 +11,8 @@ from time import sleep
 from datetime import datetime                   #Used for date comparison
 from urllib import request                      #Used for downloading media
 
+import requests
+
 import telegram                                 #telegram-bot-python
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from telegram.error import TelegramError        #Error handling
@@ -708,10 +710,13 @@ def error(bot, update, error):
     logger.warn('Update "{}" caused error "{}"'.format(update, error))
 
 def statusHandler( bot, update ):
-    msg = str.format(
-	    'I\'m alive.\nRefresh Rate: {} minutes',
-		settings['facebook_refresh_rate']/60.0
-	)
+    rateLimitStatus = getRateLimitStatus()
+    msg = 'Refresh Rate: {} minutes\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format( 
+        settings['facebook_refresh_rate']/60,
+        rateLimitStatus['call_count'],
+        rateLimitStatus['total_time'],
+        rateLimitStatus['total_cputime']
+    )
     bot.send_message( chat_id = update.message.chat_id, text = msg )
 
 def startHandler( bot, update ):
@@ -742,6 +747,14 @@ def reduceHandler( bot, update ):
 
 def echoHandler( bot, update ):
     bot.send_message( chat_id = update.message.chat_id, text = 'Echo: {}'.format( update.message.text ) )
+
+def getRateLimitStatus():    
+    url = 'https://graph.facebook.com/v3.0/me'
+    args = { 'access_token': settings['facebook_token'] }
+    respond = requests.get( url, params = args )
+
+    rateLimitStatus = json.loads( respond.headers['x-app-usage'] )
+    return rateLimitStatus
 
 
 def main():
