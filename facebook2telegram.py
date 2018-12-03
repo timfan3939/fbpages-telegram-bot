@@ -721,8 +721,6 @@ def createCheckJob(bot):
 
     facebook_job = job_queue.run_once( periodicCheck, settings['facebook_refresh_rate'], context = settings['channel_id'] )
 
-#    facebook_job = job_queue.run_repeating(periodicCheck, settings['facebook_refresh_rate'],
-#                            first=start_time, context=settings['channel_id'])
     logger.info('Job created.')
     if settings['admin_id']:
         try:
