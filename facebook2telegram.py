@@ -697,7 +697,7 @@ def periodicCheck(bot, job):
 
     new_posts_total = getNewPosts(facebook_pages, pages_dict, last_posts_dates)
 
-    settings['facebook_refresh_rate'] -= ( settings['facebook_refresh_rate_default'] / 10 )
+    settings['facebook_refresh_rate'] -= ( settings['facebook_refresh_rate_default'] / 5 )
 	
     if settings['facebook_refresh_rate'] < settings['facebook_refresh_rate_default']:
         settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
@@ -720,6 +720,9 @@ def createCheckJob(bot):
     Creates a job that periodically calls the 'periodicCheck' function
     '''
     global facebook_job
+
+    if settings['facebook_refresh_rate'] > 3600:
+        settings['facebook_refresh_rate'] = 3600
 
     facebook_job = job_queue.run_once( periodicCheck, settings['facebook_refresh_rate'], context = settings['channel_id'] )
 
@@ -766,7 +769,7 @@ def resetHandler( bot, update ):
     bot.send_message( chat_id = update.message.chat_id, text = msg )
 
 def reduceHandler( bot, update ):
-    settings['facebook_refresh_rate'] -= ( settings['facebook_refresh_rate_default'] / 10 )
+    settings['facebook_refresh_rate'] -= ( settings['facebook_refresh_rate_default'] / 4 )
     if settings['facebook_refresh_rate'] < settings['facebook_refresh_rate_default']:
         settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
     msg = 'Reduce refresh rate to {}'.format( settings['facebook_refresh_rate'] )
