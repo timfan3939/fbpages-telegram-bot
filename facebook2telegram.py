@@ -737,8 +737,8 @@ def error(bot, update, error):
 
 def statusHandler( bot, update ):
     msg = str.format(
-	    'I\'m alive.\nRefresh Rate: {}',
-		settings['facebook_refresh_rate']
+	    'I\'m alive.\nRefresh Rate: {} minutes',
+		settings['facebook_refresh_rate']/60.0
 	)
     bot.send_message( chat_id = update.message.chat_id, text = msg )
 
@@ -751,21 +751,21 @@ def startHandler( bot, update ):
 def extendHandler( bot, update ):
     settings['facebook_refresh_rate'] = settings['facebook_refresh_rate'] * 4
     msg = str.format(
-		'Extending the refresh rate to {}',
-		settings['facebook_refresh_rate']
+		'Extending the refresh rate to {} minutes',
+		settings['facebook_refresh_rate']/60.0
     )
     bot.send_message( chat_id = update.message.chat_id, text = msg )
 
 def resetHandler( bot, update ):
     settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
-    msg = 'Reset refresh rate to {}'.format( settings['facebook_refresh_rate'] )
+    msg = 'Reset refresh rate to {} minutes'.format( settings['facebook_refresh_rate']/60.0 )
     bot.send_message( chat_id = update.message.chat_id, text = msg )
 
 def reduceHandler( bot, update ):
     settings['facebook_refresh_rate'] -= ( settings['facebook_refresh_rate_default'] / 4 )
     if settings['facebook_refresh_rate'] < settings['facebook_refresh_rate_default']:
         settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
-    msg = 'Reduce refresh rate to {}'.format( settings['facebook_refresh_rate'] )
+    msg = 'Reduce refresh rate to {} minutes'.format( settings['facebook_refresh_rate']/60.0 )
     bot.send_message( chat_id = update.message.chat_id, text = msg )
 
 def echoHandler( bot, update ):
