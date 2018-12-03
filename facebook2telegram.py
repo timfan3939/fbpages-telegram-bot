@@ -762,6 +762,7 @@ def main():
     global dir_path
     global settings_path
     global dates_path
+    global facebook_job
 
     dir_path = path.dirname(path.realpath(__file__))
     settings_path = dir_path+'/botsettings.ini'
@@ -772,6 +773,8 @@ def main():
     loadTelegramBot(settings['telegram_token'])
     facebook_pages = settings['facebook_pages']
 
+
+    # Test if new page added
     startPage = 0
     while startPage < len(facebook_pages):
         endPage = (startPage + 40) if ( (startPage + 40) < len(facebook_pages) ) else len(facebook_pages)
@@ -780,7 +783,7 @@ def main():
         startPage += 40
         sleep(10)
 
-    createCheckJob(bot)
+    facebook_job = job_queue.run_once( periodicCheck, 0, context = settings['channel_id'] )
 
     #Log all errors
     dispatcher.add_handler( CommandHandler( 'status', statusHandler ) )
@@ -792,7 +795,6 @@ def main():
     dispatcher.add_error_handler(error)
 
     updater.start_polling()
-
     updater.idle()
 
 
