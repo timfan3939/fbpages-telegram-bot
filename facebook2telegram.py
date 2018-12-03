@@ -79,8 +79,7 @@ def loadSettingsFile(filename):
         settings['facebook_token'] = config.get('facebook', 'token')
         settings['facebook_pages'] = ast.literal_eval(
                                         config.get("facebook", "pages"))
-        settings['facebook_refresh_rate'] = float(
-                                        config.get('facebook', 'refreshrate'))
+        settings['facebook_refresh_rate'] = 1900.0
         settings['facebook_refresh_rate_default'] = float(
                                         config.get('facebook', 'refreshrate'))
         settings['facebook_page_per_request'] = int(config.get('facebook', 'pageperrequest'))
