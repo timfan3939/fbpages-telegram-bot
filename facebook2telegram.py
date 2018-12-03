@@ -37,10 +37,6 @@ logging.basicConfig(
             when = 'midnight', 
             atTime = datetime(year=2018, month=1, day=1, hour=0, minute=0, second=0).time() ) ] )
 logger = logging.getLogger(__name__)
-#logger.setLevel(logging.INFO)
-
-#logger.addHandler( logging.handlers.TimedRotatingFileHandler('log/fb2tg.log',when='D') )
-
 
 #youtube-dl
 ydl = youtube_dl.YoutubeDL({'outtmpl': '%(id)s%(ext)s'})
@@ -50,13 +46,13 @@ dir_path = None
 settings_path = None
 dates_path = None
 graph = None
-start_time = None
 facebook_pages = None
 last_posts_dates = {}
 bot = None
 updater = None
 dispatcher = None
 job_queue = None
+facebook_job = None
 request_seq = 0
 
 
@@ -78,7 +74,8 @@ def loadSettingsFile(filename):
         settings['facebook_token'] = config.get('facebook', 'token')
         settings['facebook_pages'] = ast.literal_eval(
                                         config.get("facebook", "pages"))
-        settings['facebook_refresh_rate'] = float(
+        settings['facebook_refresh_rate'] = 1900.0
+        settings['facebook_refresh_rate_default'] = float(
                                         config.get('facebook', 'refreshrate'))
         settings['facebook_page_per_request'] = int(config.get('facebook', 'pageperrequest'))
         settings['allow_status'] = config.getboolean('facebook', 'status')
@@ -184,15 +181,15 @@ def dateTimeDecoder(pairs, date_format="%Y-%m-%dT%H:%M:%S"):
     return d
 
 
-def loadDatesJSON(last_posts_dates, filename):
+def loadDatesJSON( filename ):
     '''
     Loads the .json file containing the latest post's date for every page
     loaded from the settings file to the 'last_posts_dates' dict
     '''
-    with open(filename, 'r') as f:
-        loaded_json = json.load(f, object_pairs_hook=dateTimeDecoder)
+    with open( filename, 'r' ) as f:
+        loaded_json = json.load( f, object_pairs_hook = dateTimeDecoder )
 
-    logger.info('Loaded JSON file.')
+    logger.info( 'Loaded JSON file.' )
     return loaded_json
 
 
@@ -219,44 +216,41 @@ def getMostRecentPostsDates(facebook_pages, filename):
     '''
     logger.info('Getting most recent posts dates...')
 
-    global start_time
     global last_posts_dates
 
-    last_posts = graph.get_objects(
-                ids=facebook_pages,
-                fields='name,posts.limit(1){created_time}')
-
-    logger.info('Trying to load JSON file...')
-
+    # Check if dates.json exists.  If not, create one.
     try:
-        last_posts_dates = loadDatesJSON(last_posts_dates, filename)
-
-        for page in facebook_pages:
-            if page not in last_posts_dates:
-                logger.info('Checking if page '+page+' went online...')
-
-                try:
-                    last_post = last_posts[page]['posts']['data'][0]
-                    last_posts_dates[page] = parsePostDate(last_post)
-                    logger.info('Page: '+last_posts[page]['name']+' went online.')
-                    dumpDatesJSON(last_posts_dates, filename)
-                except KeyError:
-                    logger.warning('Page '+page+' not found.')
-
-        start_time = 0.0 #Makes the job run its callback function immediately
-
+        last_posts_dates = loadDatesJSON( filename )
     except (IOError, ValueError):
-        print('JSON file not found or corrupted, fetching latest dates...')
+        last_posts_date = {}
+        dumpDatesJSON( last_posts_dates, filename )
 
-        for page in facebook_pages:
-            try:
-                last_post = last_posts[page]['posts']['data'][0]
-                last_posts_dates[page] = parsePostDate(last_post)
-                logger.info('Checked page: '+last_posts[page]['name'])
-            except KeyError:
-                logger.warning('Page '+page+' not found.')
+    # Check if any new page ID is added
+    new_facebook_pages = []
+    
+    for page in facebook_pages:
+        if page not in last_posts_dates:
+            new_facebook_pages.append( page )
+            logger.info( 'Checking if page {} went online...'.format( page ) )
 
-        dumpDatesJSON(last_posts_dates, filename)
+    if len( new_facebook_pages ) == 0:
+        return
+
+    last_posts = graph.get_objects(
+            ids = new_facebook_pages,
+            fields = 'name,posts.limit(1){created_time}'
+    )
+
+    for page in new_facebook_pages:
+        try:
+            last_post = last_posts[page]['posts']['data'][0]
+            last_posts_dates[page] = parsePostDate( last_post )
+            dumpDatesJSON( last_posts_dates, filename )
+            logger.info( 'Page {} ({}) went online.'.format( last_posts[page]['name'], page ) )
+
+        except KeyError:
+            logger.warning( 'Page {} not found.'.format( page ) )
+
 
 
 def getDirectURLVideo(video_id):
@@ -675,7 +669,12 @@ def periodicCheck(bot, job):
         logger.error('Result: {}'.format(error.result))
         msg = 'Could not get facebook posts.\nMessage: {}\nType: {}\nCode: {}\nResult:{}'.format(error.message, error.type, error.code, error.result)
         bot.send_message( chat_id = chat_id, text=msg )
-        bot.send_message( chat_id = chat_id, text=error )
+
+        # Extends the refresh rate
+        settings['facebook_refresh_rate'] *= 2
+        createCheckJob( bot )
+        logger.error( 'Extend refresh rate to {}.'.format( settings['facebook_refresh_rate'] ) )
+
         '''
         TODO: 'get_object' for every page individually, due to a bug
         in the Graph API that makes some pages return an OAuthException 1,
@@ -688,6 +687,12 @@ def periodicCheck(bot, job):
         return
 
     new_posts_total = getNewPosts(facebook_pages, pages_dict, last_posts_dates)
+
+    settings['facebook_refresh_rate'] -= ( settings['facebook_refresh_rate_default'] / 5 )
+	
+    if settings['facebook_refresh_rate'] < settings['facebook_refresh_rate_default']:
+        settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
+    createCheckJob( bot )
 
     logger.info('Checked all posts. Next check in '
           +str(settings['facebook_refresh_rate'])
@@ -705,8 +710,13 @@ def createCheckJob(bot):
     '''
     Creates a job that periodically calls the 'periodicCheck' function
     '''
-    job_queue.run_repeating(periodicCheck, settings['facebook_refresh_rate'],
-                            first=start_time, context=settings['channel_id'])
+    global facebook_job
+
+    if settings['facebook_refresh_rate'] > 3600:
+        settings['facebook_refresh_rate'] = 3600
+
+    facebook_job = job_queue.run_once( periodicCheck, settings['facebook_refresh_rate'], context = settings['channel_id'] )
+
     logger.info('Job created.')
     if settings['admin_id']:
         try:
@@ -722,7 +732,37 @@ def error(bot, update, error):
     logger.warn('Update "{}" caused error "{}"'.format(update, error))
 
 def statusHandler( bot, update ):
-    bot.send_message( chat_id = update.message.chat_id, text = 'I\'m alive.' )
+    msg = str.format(
+	    'I\'m alive.\nRefresh Rate: {} minutes',
+		settings['facebook_refresh_rate']/60.0
+	)
+    bot.send_message( chat_id = update.message.chat_id, text = msg )
+
+def startHandler( bot, update ):
+    msg = str.format(
+		'The bot has started.'
+	)
+    bot.send_message( chat_id = update.message.chat_id, text = msg )
+
+def extendHandler( bot, update ):
+    settings['facebook_refresh_rate'] = settings['facebook_refresh_rate'] * 4
+    msg = str.format(
+		'Extending the refresh rate to {} minutes',
+		settings['facebook_refresh_rate']/60.0
+    )
+    bot.send_message( chat_id = update.message.chat_id, text = msg )
+
+def resetHandler( bot, update ):
+    settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
+    msg = 'Reset refresh rate to {} minutes'.format( settings['facebook_refresh_rate']/60.0 )
+    bot.send_message( chat_id = update.message.chat_id, text = msg )
+
+def reduceHandler( bot, update ):
+    settings['facebook_refresh_rate'] -= ( settings['facebook_refresh_rate_default'] / 4 )
+    if settings['facebook_refresh_rate'] < settings['facebook_refresh_rate_default']:
+        settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
+    msg = 'Reduce refresh rate to {} minutes'.format( settings['facebook_refresh_rate']/60.0 )
+    bot.send_message( chat_id = update.message.chat_id, text = msg )
 
 def echoHandler( bot, update ):
     bot.send_message( chat_id = update.message.chat_id, text = 'Echo: {}'.format( update.message.text ) )
@@ -755,6 +795,10 @@ def main():
 
     #Log all errors
     dispatcher.add_handler( CommandHandler( 'status', statusHandler ) )
+    dispatcher.add_handler( CommandHandler( 'extend', extendHandler ) )
+    dispatcher.add_handler( CommandHandler( 'start', startHandler) )
+    dispatcher.add_handler( CommandHandler( 'reduce', reduceHandler) )
+    dispatcher.add_handler( CommandHandler( 'reset', resetHandler) )
     dispatcher.add_handler( MessageHandler( Filters.text, echoHandler ) )
     dispatcher.add_error_handler(error)
 
