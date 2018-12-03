@@ -86,12 +86,9 @@ def loadSettingsFile(filename):
         settings['allow_message'] = config.getboolean('facebook', 'message')
         settings['telegram_token'] = config.get('telegram', 'token')
         settings['channel_id'] = config.get('telegram', 'channel')
-        settings['admin_id'] = config.get('telegram', 'admin')
 
         logger.info('Loaded settings:')
         logger.info('Locale: {}'.format( str(settings['locale'] ) ) )
-        if settings['admin_id']:
-            logger.info('Admin ID: {}'.format( settings['admin_id'] ) )
         logger.info('Channel: ' + settings['channel_id'])
         logger.info('Refresh rate: ' + str(settings['facebook_refresh_rate']))
         logger.info('Allow Status: ' + str(settings['allow_status']))
@@ -645,20 +642,7 @@ def periodicCheck(bot, job):
                           source,link,caption,parent_id,object_id,permalink_url}',
             locale=settings['locale'])
 
-        #If there is an admin chat ID in the settings file
-        if settings['admin_id']:
-            try:
-                #Sends a message to the bot Admin confirming the action
-                bot.send_message(
-                    chat_id=settings['admin_id'],
-                    text='Successfully fetched Facebook posts.')
-
-            except TelegramError:
-                logger.warning('Admin ID not found.')
-                logger.info('Successfully fetched Facebook posts.')
-
-        else:
-            logger.info('Successfully fetched Facebook posts.')
+        logger.info('Successfully fetched Facebook posts.')
 
     #Error in the Facebook API
     except facebook.GraphAPIError as error:
@@ -718,14 +702,6 @@ def createCheckJob(bot):
     facebook_job = job_queue.run_once( periodicCheck, settings['facebook_refresh_rate'], context = settings['channel_id'] )
 
     logger.info('Job created.')
-    if settings['admin_id']:
-        try:
-            bot.send_message(
-                chat_id=settings['admin_id'],
-                text='Bot Started.')
-        except TelegramError:
-            logger.warning('Admin ID not found.')
-            logger.info('Bot Started.')
 
 
 def error(bot, update, error):
