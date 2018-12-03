@@ -46,7 +46,6 @@ dir_path = None
 settings_path = None
 dates_path = None
 graph = None
-start_time = None
 facebook_pages = None
 last_posts_dates = {}
 bot = None
@@ -182,15 +181,15 @@ def dateTimeDecoder(pairs, date_format="%Y-%m-%dT%H:%M:%S"):
     return d
 
 
-def loadDatesJSON(last_posts_dates, filename):
+def loadDatesJSON( filename ):
     '''
     Loads the .json file containing the latest post's date for every page
     loaded from the settings file to the 'last_posts_dates' dict
     '''
-    with open(filename, 'r') as f:
-        loaded_json = json.load(f, object_pairs_hook=dateTimeDecoder)
+    with open( filename, 'r' ) as f:
+        loaded_json = json.load( f, object_pairs_hook = dateTimeDecoder )
 
-    logger.info('Loaded JSON file.')
+    logger.info( 'Loaded JSON file.' )
     return loaded_json
 
 
@@ -217,44 +216,41 @@ def getMostRecentPostsDates(facebook_pages, filename):
     '''
     logger.info('Getting most recent posts dates...')
 
-    global start_time
     global last_posts_dates
 
-    last_posts = graph.get_objects(
-                ids=facebook_pages,
-                fields='name,posts.limit(1){created_time}')
-
-    logger.info('Trying to load JSON file...')
-
+    # Check if dates.json exists.  If not, create one.
     try:
-        last_posts_dates = loadDatesJSON(last_posts_dates, filename)
-
-        for page in facebook_pages:
-            if page not in last_posts_dates:
-                logger.info('Checking if page '+page+' went online...')
-
-                try:
-                    last_post = last_posts[page]['posts']['data'][0]
-                    last_posts_dates[page] = parsePostDate(last_post)
-                    logger.info('Page: '+last_posts[page]['name']+' went online.')
-                    dumpDatesJSON(last_posts_dates, filename)
-                except KeyError:
-                    logger.warning('Page '+page+' not found.')
-
-        start_time = 0.0 #Makes the job run its callback function immediately
-
+        last_posts_dates = loadDatesJSON( filename )
     except (IOError, ValueError):
-        print('JSON file not found or corrupted, fetching latest dates...')
+        last_posts_date = {}
+        dumpDatesJSON( last_posts_dates, filename )
 
-        for page in facebook_pages:
-            try:
-                last_post = last_posts[page]['posts']['data'][0]
-                last_posts_dates[page] = parsePostDate(last_post)
-                logger.info('Checked page: '+last_posts[page]['name'])
-            except KeyError:
-                logger.warning('Page '+page+' not found.')
+    # Check if any new page ID is added
+    new_facebook_pages = []
+    
+    for page in facebook_pages:
+        if page not in last_posts_dates:
+            new_facebook_pages.append( page )
+            logger.info( 'Checking if page {} went online...'.format( page ) )
 
-        dumpDatesJSON(last_posts_dates, filename)
+    if len( new_facebook_pages ) == 0:
+        return
+
+    last_posts = graph.get_objects(
+            ids = new_facebook_pages,
+            fields = 'name,posts.limit(1){created_time}'
+    )
+
+    for page in new_facebook_pages:
+        try:
+            last_post = last_posts[page]['posts']['data'][0]
+            last_posts_dates[page] = parsePostDate( last_post )
+            dumpDatesJSON( last_posts_dates, filename )
+            logger.info( 'Page {} ({}) went online.'.format( last_posts[page]['name'], page ) )
+
+        except KeyError:
+            logger.warning( 'Page {} not found.'.format( page ) )
+
 
 
 def getDirectURLVideo(video_id):
