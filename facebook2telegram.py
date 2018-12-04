@@ -156,8 +156,9 @@ class dateTimeEncoder(json.JSONEncoder):
         if isinstance(o, datetime):
             serial = o.isoformat()  #Save in ISO format
             return serial
+        
+        return super().default( o )
 
-        raise TypeError('Unknown type')
 
 
 def dateTimeDecoder(pairs, date_format="%Y-%m-%dT%H:%M:%S"):
@@ -316,7 +317,7 @@ def postPhotoToChat(post, post_message, bot, chat_id):
         except TimedOut:
             """
             If there is a timeout, try again with a higher
-            timeout value for 'bot.send_photo' 
+            timeout value for 'bot.send_photo'
             """
             logger.warning('File upload timed out, trying again...')
             logger.info('Sending file...')
@@ -543,7 +544,7 @@ def postNewPosts(new_posts_total, chat_id):
         posts_page = post['page']
         logger.info('Posting NEW post from page {}...'.format(posts_page))
         headerPosted = False
-        
+
         try:
             postToChat(post, bot, chat_id)
         except BadRequest as e:
