@@ -58,11 +58,11 @@ request_seq = 0
 
 
 def loadSettingsFile(filename):
-    '''
+    """
     Loads the settings from the .ini file
     and stores them in global variables.
     Use example.botsettings.ini as an example.
-    '''
+    """
     #Read config file
     config = configparser.SafeConfigParser()
     config.read(filename)
@@ -113,17 +113,17 @@ def loadSettingsFile(filename):
 
 
 def loadFacebookGraph(facebook_token):
-    '''
+    """
     Initialize Facebook GraphAPI with the token loaded from the settings file
-    '''
+    """
     global graph
     graph = facebook.GraphAPI(access_token=facebook_token, version='3.0', timeout=120)
 
 
 def loadTelegramBot(telegram_token):
-    '''
+    """
     Initialize Telegram Bot API with the token loaded from the settings file
-    '''
+    """
     global bot
     global updater
     global dispatcher
@@ -140,18 +140,18 @@ def loadTelegramBot(telegram_token):
 
 
 def parsePostDate(post):
-    '''
+    """
     Converts 'created_time' str from a Facebook post to the 'datetime' format
-    '''
+    """
     date_format = "%Y-%m-%dT%H:%M:%S+0000"
     post_date = datetime.strptime(post['created_time'], date_format)
     return post_date
 
 
 class dateTimeEncoder(json.JSONEncoder):
-    '''
+    """
     Converts the 'datetime' type to an ISO timestamp for the JSON dumper
-    '''
+    """
     def default(self, o):
         if isinstance(o, datetime):
             serial = o.isoformat()  #Save in ISO format
@@ -161,9 +161,9 @@ class dateTimeEncoder(json.JSONEncoder):
 
 
 def dateTimeDecoder(pairs, date_format="%Y-%m-%dT%H:%M:%S"):
-    '''
+    """
     Converts the ISO timestamp to 'datetime' type for the JSON loader
-    '''
+    """
     d = {}
 
     for k, v in pairs:
@@ -179,10 +179,10 @@ def dateTimeDecoder(pairs, date_format="%Y-%m-%dT%H:%M:%S"):
 
 
 def loadDatesJSON( filename ):
-    '''
+    """
     Loads the .json file containing the latest post's date for every page
     loaded from the settings file to the 'last_posts_dates' dict
-    '''
+    """
     with open( filename, 'r' ) as f:
         loaded_json = json.load( f, object_pairs_hook = dateTimeDecoder )
 
@@ -191,10 +191,10 @@ def loadDatesJSON( filename ):
 
 
 def dumpDatesJSON(last_posts_dates, filename):
-    '''
+    """
     Dumps the 'last_posts_dates' dict to a .json file containing the
     latest post's date for every page loaded from the settings file.
-    '''
+    """
     with open(filename, 'w') as f:
         json.dump(last_posts_dates, f,
                   sort_keys=True, indent=4, cls=dateTimeEncoder)
@@ -204,13 +204,13 @@ def dumpDatesJSON(last_posts_dates, filename):
 
 
 def getMostRecentPostsDates(facebook_pages, filename):
-    '''
+    """
     Gets the date for the most recent post for every page loaded from the
     settings file. If there is a 'dates.json' file, load it. If not, fetch
     the dates from Facebook and store them in the 'dates.json' file.
     The .json file is used to keep track of the latest posts posted to
     Telegram in case the bot is restarted after being down for a while.
-    '''
+    """
     logger.info('Getting most recent posts dates...')
 
     global last_posts_dates
@@ -251,9 +251,9 @@ def getMostRecentPostsDates(facebook_pages, filename):
 
 
 def getDirectURLVideo(video_id):
-    '''
+    """
     Get direct URL for the video using GraphAPI and the post's 'object_id'
-    '''
+    """
     logger.info('Getting direct URL...')
     video_post = graph.get_object(
             id=video_id,
@@ -263,9 +263,9 @@ def getDirectURLVideo(video_id):
 
 
 def getDirectURLVideoYDL(URL):
-    '''
+    """
     Get direct URL for the video using youtube-dl
-    '''
+    """
     try:
         with ydl:
             result = ydl.extract_info(URL, download=False) #Just get the link
@@ -283,9 +283,9 @@ def getDirectURLVideoYDL(URL):
 
 
 def postPhotoToChat(post, post_message, bot, chat_id):
-    '''
+    """
     Posts the post's picture with the appropriate caption.
-    '''
+    """
     direct_link = post['full_picture']
 
     try:
@@ -296,8 +296,10 @@ def postPhotoToChat(post, post_message, bot, chat_id):
         return message
 
     except (BadRequest, TimedOut):
-        '''If the picture can't be sent using its URL,
-        it is downloaded locally and uploaded to Telegram.'''
+        """
+        If the picture can't be sent using its URL,
+        it is downloaded locally and uploaded to Telegram.
+        """
         try:
             logger.info('Sending by URL failed, downloading file...')
             request.urlretrieve(direct_link, dir_path+'/temp.jpg')
@@ -312,8 +314,10 @@ def postPhotoToChat(post, post_message, bot, chat_id):
             return message
 
         except TimedOut:
-            '''If there is a timeout, try again with a higher
-            timeout value for 'bot.send_photo' '''
+            """
+            If there is a timeout, try again with a higher
+            timeout value for 'bot.send_photo' 
+            """
             logger.warning('File upload timed out, trying again...')
             logger.info('Sending file...')
             with open(dir_path+'/temp.jpg', 'rb') as picture:
@@ -406,11 +410,11 @@ def postVideoToChat(post, post_message, bot, chat_id):
 
 
 def postLinkToChat(post, post_message, bot, chat_id):
-    '''
+    """
     Checks if the post has a message with its link in it. If it does,
     it sends only the message. If not, it sends the link followed by the
     post's message.
-    '''
+    """
     if post['link'] in post_message:
         post_link = ''
     else:
@@ -422,10 +426,10 @@ def postLinkToChat(post, post_message, bot, chat_id):
 
 
 def checkIfAllowedAndPost(post, bot, chat_id):
-    '''
+    """
     Checks the type of the Facebook post and if it's allowed by the
     settings file, then calls the appropriate function for each type.
-    '''
+    """
     #If it's a shared post, call this function for the parent post
     if 'parent_id' in post and settings['allow_shared']:
         logger.info('This is a shared post.')
@@ -443,9 +447,11 @@ def checkIfAllowedAndPost(post, bot, chat_id):
         checkIfAllowedAndPost(parent_post, bot, chat_id)
         return True
 
-    '''If there's a message in the post, and it's allowed by the
+    """
+    If there's a message in the post, and it's allowed by the
     settings file, store it in 'post_message', which will be passed to
-    another function based on the post type.'''
+    another function based on the post type.
+    """
     if 'message' in post and settings['allow_message']:
         post_message = post['message']
     else:
@@ -502,9 +508,9 @@ def checkIfAllowedAndPost(post, bot, chat_id):
 headerPosted = False
 
 def postToChat(post, bot, chat_id):
-    '''
+    """
     Calls another function for posting and checks if it returns True.
-    '''
+    """
     global headerPosted
 
     text = '{} updated a post at {}.\n'.format(post['pagename'].replace('_', '\_'), post['created_time']) + \
@@ -619,12 +625,12 @@ def updateRequestList():
         request_seq = (request_seq + 1) % len(facebook_page_list)
 
 def periodicCheck(bot, job):
-    '''
+    """
     Checks for new posts for every page in the list loaded from the
     settings file, posts them, and updates the dates.json file, which
     contains the date for the latest post posted to Telegram for every
     page.
-    '''
+    """
     
     updateRequestList()
     
@@ -659,7 +665,7 @@ def periodicCheck(bot, job):
         createCheckJob( bot )
         logger.error( 'Extend refresh rate to {}.'.format( settings['facebook_refresh_rate'] ) )
 
-        '''
+        """
         TODO: 'get_object' for every page individually, due to a bug
         in the Graph API that makes some pages return an OAuthException 1,
         which in turn doesn't allow the 'get_objects' method return a dict
@@ -667,7 +673,7 @@ def periodicCheck(bot, job):
         when one or more pages in 'facbeook_pages' are offline. One possible
         workaround is to create an Extended Page Access Token instad of an
         App Token, with the downside of having to renew it every two months.
-        '''
+        """
         return
 
     new_posts_total = getNewPosts(facebook_pages, pages_dict, last_posts_dates)
@@ -698,9 +704,9 @@ def periodicCheck(bot, job):
     bot.send_message( chat_id = chat_id, text = msg )
 
 def createCheckJob(bot):
-    '''
+    """
     Creates a job that periodically calls the 'periodicCheck' function
-    '''
+    """
     global facebook_job
 
     if settings['facebook_refresh_rate'] > 3600:
