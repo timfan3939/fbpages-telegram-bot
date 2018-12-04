@@ -24,7 +24,6 @@ from telegram.error import NetworkError         #Error handling
 import facebook                                 #facebook-sdk
 
 import youtube_dl                               #youtube-dl
-from youtube_dl import utils
 
 
 #Global Variables
@@ -36,7 +35,7 @@ logging.basicConfig(
     handlers = [
         logging.handlers.TimedRotatingFileHandler(
             filename = 'log/fb2tg.log',
-            when = 'midnight', 
+            when = 'midnight',
             atTime = datetime(year=2018, month=1, day=1, hour=0, minute=0, second=0).time() ) ] )
 logger = logging.getLogger(__name__)
 
@@ -159,7 +158,6 @@ class dateTimeEncoder(json.JSONEncoder):
             return serial
 
         raise TypeError('Unknown type')
-        return json.JSONEncoder.default(self, o)
 
 
 def dateTimeDecoder(pairs, date_format="%Y-%m-%dT%H:%M:%S"):
@@ -221,12 +219,12 @@ def getMostRecentPostsDates(facebook_pages, filename):
     try:
         last_posts_dates = loadDatesJSON( filename )
     except (IOError, ValueError):
-        last_posts_date = {}
+        last_posts_dates = {}
         dumpDatesJSON( last_posts_dates, filename )
 
     # Check if any new page ID is added
     new_facebook_pages = []
-    
+
     for page in facebook_pages:
         if page not in last_posts_dates:
             new_facebook_pages.append( page )
@@ -718,7 +716,7 @@ def error(bot, update, error):
 
 def statusHandler( bot, update ):
     rateLimitStatus = getRateLimitStatus()
-    msg = 'Refresh Rate: {:.2f} minutes\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format( 
+    msg = 'Refresh Rate: {:.2f} minutes\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format(
         settings['facebook_refresh_rate']/60,
         rateLimitStatus['call_count'],
         rateLimitStatus['total_time'],
@@ -755,7 +753,7 @@ def reduceHandler( bot, update ):
 def echoHandler( bot, update ):
     bot.send_message( chat_id = update.message.chat_id, text = 'Echo: {}'.format( update.message.text ) )
 
-def getRateLimitStatus():    
+def getRateLimitStatus():
     url = 'https://graph.facebook.com/v3.0/me'
     args = { 'access_token': settings['facebook_token'] }
     respond = requests.get( url, params = args )
