@@ -692,7 +692,7 @@ def periodicCheck(bot, job):
         logger.info('No new posts.')
 
     rateLimitStatus = getRateLimitStatus()
-    msg = 'call_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format(
+    msg = '=== Rate Limit Status ===\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format(
         rateLimitStatus['call_count'],
         rateLimitStatus['total_time'],
         rateLimitStatus['total_cputime']
