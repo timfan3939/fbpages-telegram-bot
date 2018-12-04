@@ -24,7 +24,6 @@ from telegram.error import NetworkError         #Error handling
 import facebook                                 #facebook-sdk
 
 import youtube_dl                               #youtube-dl
-from youtube_dl import utils
 
 
 #Global Variables
@@ -36,7 +35,7 @@ logging.basicConfig(
     handlers = [
         logging.handlers.TimedRotatingFileHandler(
             filename = 'log/fb2tg.log',
-            when = 'midnight', 
+            when = 'midnight',
             atTime = datetime(year=2018, month=1, day=1, hour=0, minute=0, second=0).time() ) ] )
 logger = logging.getLogger(__name__)
 
@@ -159,7 +158,6 @@ class dateTimeEncoder(json.JSONEncoder):
             return serial
 
         raise TypeError('Unknown type')
-        return json.JSONEncoder.default(self, o)
 
 
 def dateTimeDecoder(pairs, date_format="%Y-%m-%dT%H:%M:%S"):
@@ -221,12 +219,12 @@ def getMostRecentPostsDates(facebook_pages, filename):
     try:
         last_posts_dates = loadDatesJSON( filename )
     except (IOError, ValueError):
-        last_posts_date = {}
+        last_posts_dates = {}
         dumpDatesJSON( last_posts_dates, filename )
 
     # Check if any new page ID is added
     new_facebook_pages = []
-    
+
     for page in facebook_pages:
         if page not in last_posts_dates:
             new_facebook_pages.append( page )
@@ -674,7 +672,7 @@ def periodicCheck(bot, job):
 
     new_posts_total = getNewPosts(facebook_pages, pages_dict, last_posts_dates)
 
-    settings['facebook_refresh_rate'] -= ( settings['facebook_refresh_rate_default'] / 5 )
+    settings['facebook_refresh_rate'] -= ( settings['facebook_refresh_rate_default'] / 3 )
 	
     if settings['facebook_refresh_rate'] < settings['facebook_refresh_rate_default']:
         settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
@@ -691,6 +689,13 @@ def periodicCheck(bot, job):
     else:
         logger.info('No new posts.')
 
+    rateLimitStatus = getRateLimitStatus()
+    msg = '=== Rate Limit Status ===\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format(
+        rateLimitStatus['call_count'],
+        rateLimitStatus['total_time'],
+        rateLimitStatus['total_cputime']
+    )
+    bot.send_message( chat_id = chat_id, text = msg )
 
 def createCheckJob(bot):
     '''
@@ -711,7 +716,7 @@ def error(bot, update, error):
 
 def statusHandler( bot, update ):
     rateLimitStatus = getRateLimitStatus()
-    msg = 'Refresh Rate: {} minutes\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format( 
+    msg = 'Refresh Rate: {:.2f} minutes\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format(
         settings['facebook_refresh_rate']/60,
         rateLimitStatus['call_count'],
         rateLimitStatus['total_time'],
@@ -728,27 +733,27 @@ def startHandler( bot, update ):
 def extendHandler( bot, update ):
     settings['facebook_refresh_rate'] = settings['facebook_refresh_rate'] * 4
     msg = str.format(
-		'Extending the refresh rate to {} minutes',
+		'Extending the refresh rate to {:.2f} minutes',
 		settings['facebook_refresh_rate']/60.0
     )
     bot.send_message( chat_id = update.message.chat_id, text = msg )
 
 def resetHandler( bot, update ):
     settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
-    msg = 'Reset refresh rate to {} minutes'.format( settings['facebook_refresh_rate']/60.0 )
+    msg = 'Reset refresh rate to {:.2f} minutes'.format( settings['facebook_refresh_rate']/60.0 )
     bot.send_message( chat_id = update.message.chat_id, text = msg )
 
 def reduceHandler( bot, update ):
-    settings['facebook_refresh_rate'] -= ( settings['facebook_refresh_rate_default'] / 4 )
+    settings['facebook_refresh_rate'] -= ( settings['facebook_refresh_rate_default'] / 1.5 )
     if settings['facebook_refresh_rate'] < settings['facebook_refresh_rate_default']:
         settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
-    msg = 'Reduce refresh rate to {} minutes'.format( settings['facebook_refresh_rate']/60.0 )
+    msg = 'Reduce refresh rate to {:.2f} minutes'.format( settings['facebook_refresh_rate']/60.0 )
     bot.send_message( chat_id = update.message.chat_id, text = msg )
 
 def echoHandler( bot, update ):
     bot.send_message( chat_id = update.message.chat_id, text = 'Echo: {}'.format( update.message.text ) )
 
-def getRateLimitStatus():    
+def getRateLimitStatus():
     url = 'https://graph.facebook.com/v3.0/me'
     args = { 'access_token': settings['facebook_token'] }
     respond = requests.get( url, params = args )
