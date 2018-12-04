@@ -433,7 +433,7 @@ def checkIfAllowedAndPost(post, bot, chat_id):
     #If it's a shared post, call this function for the parent post
     if 'parent_id' in post and settings['allow_shared']:
         logger.info('This is a shared post.')
-        
+
         if 'message' in post:
             bot.send_message( chat_id = chat_id, text = post['message'] )
 
@@ -651,13 +651,13 @@ def periodicCheck(bot, job):
         logger.info('Successfully fetched Facebook posts.')
 
     #Error in the Facebook API
-    except facebook.GraphAPIError as error:
+    except facebook.GraphAPIError as err:
         logger.error('Could not get Facebook posts.')
-        logger.error('Message: {}'.format(error.message))
-        logger.error('Type: {}'.format(error.type))
-        logger.error('Code: {}'.format(error.code))
-        logger.error('Result: {}'.format(error.result))
-        msg = 'Could not get facebook posts.\nMessage: {}\nType: {}\nCode: {}\nResult:{}'.format(error.message, error.type, error.code, error.result)
+        logger.error('Message: {}'.format(err.message))
+        logger.error('Type: {}'.format(err.type))
+        logger.error('Code: {}'.format(err.code))
+        logger.error('Result: {}'.format(err.result))
+        msg = 'Could not get facebook posts.\nMessage: {}\nType: {}\nCode: {}\nResult:{}'.format(err.message, err.type, err.code, err.result)
         bot.send_message( chat_id = chat_id, text=msg )
 
         # Extends the refresh rate
