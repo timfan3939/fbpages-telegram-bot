@@ -156,7 +156,7 @@ class dateTimeEncoder(json.JSONEncoder):
         if isinstance(o, datetime):
             serial = o.isoformat()  #Save in ISO format
             return serial
-        
+
         return super().default( o )
 
 
