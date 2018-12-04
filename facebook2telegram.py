@@ -691,6 +691,13 @@ def periodicCheck(bot, job):
     else:
         logger.info('No new posts.')
 
+    rateLimitStatus = getRateLimitStatus()
+    msg = 'call_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format(
+        rateLimitStatus['call_count'],
+        rateLimitStatus['total_time'],
+        rateLimitStatus['total_cputime']
+    )
+    bot.send_message( chat_id = chat_id, text = msg )
 
 def createCheckJob(bot):
     '''
