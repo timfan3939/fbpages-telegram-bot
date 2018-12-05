@@ -55,6 +55,7 @@ dispatcher = None
 job_queue = None
 facebook_job = None
 request_seq = 0
+show_usage_limit_status = False
 
 
 def loadSettingsFile(filename):
@@ -691,14 +692,15 @@ def periodicCheck(bot, job):
         logger.info('Posted all new posts.')
     else:
         logger.info('No new posts.')
-
-    rateLimitStatus = getRateLimitStatus()
-    msg = '=== Rate Limit Status ===\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format(
-        rateLimitStatus['call_count'],
-        rateLimitStatus['total_time'],
-        rateLimitStatus['total_cputime']
-    )
-    bot.send_message( chat_id = chat_id, text = msg )
+    
+    if show_usage_limit_status: 
+        rateLimitStatus = getRateLimitStatus()
+        msg = '=== Rate Limit Status ===\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format(
+            rateLimitStatus['call_count'],
+            rateLimitStatus['total_time'],
+            rateLimitStatus['total_cputime']
+        )
+        bot.send_message( chat_id = chat_id, text = msg )
 
 def createCheckJob(bot):
     """
@@ -755,6 +757,12 @@ def reduceHandler( bot, update ):
     msg = 'Reduce refresh rate to {:.2f} minutes'.format( settings['facebook_refresh_rate']/60.0 )
     bot.send_message( chat_id = update.message.chat_id, text = msg )
 
+def toggleRateLimitStatus( bot, update ):
+    global show_usage_limit_status
+    msg = '{} Rate Limit Status while updating.'.format( 'Hide' if show_usage_limit_status else 'Show' )
+    show_usage_limit_status = not show_usage_limit_status
+    bot.send_message( chat_id = update.message.chat_id, text = msg )
+
 def echoHandler( bot, update ):
     bot.send_message( chat_id = update.message.chat_id, text = 'Echo: {}'.format( update.message.text ) )
 
@@ -798,9 +806,10 @@ def main():
     #Log all errors
     dispatcher.add_handler( CommandHandler( 'status', statusHandler ) )
     dispatcher.add_handler( CommandHandler( 'extend', extendHandler ) )
-    dispatcher.add_handler( CommandHandler( 'start', startHandler) )
-    dispatcher.add_handler( CommandHandler( 'reduce', reduceHandler) )
-    dispatcher.add_handler( CommandHandler( 'reset', resetHandler) )
+    dispatcher.add_handler( CommandHandler( 'start', startHandler ) )
+    dispatcher.add_handler( CommandHandler( 'reduce', reduceHandler ) )
+    dispatcher.add_handler( CommandHandler( 'reset', resetHandler ) )
+    dispatcher.add_handler( CommandHandler( 'toggle', toggleRateLimitStatus ) )
     dispatcher.add_handler( MessageHandler( Filters.text, echoHandler ) )
     dispatcher.add_error_handler(error)
 
