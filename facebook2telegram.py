@@ -635,6 +635,7 @@ def periodicCheck(bot, job):
     """
     
     updateRequestList()
+    createCheckJob( bot )
     
     global last_posts_dates
     chat_id = job.context
@@ -664,7 +665,6 @@ def periodicCheck(bot, job):
 
         # Extends the refresh rate
         settings['facebook_refresh_rate'] *= 2
-        createCheckJob( bot )
         logger.error( 'Extend refresh rate to {}.'.format( settings['facebook_refresh_rate'] ) )
 
         """
@@ -677,11 +677,14 @@ def periodicCheck(bot, job):
         App Token, with the downside of having to renew it every two months.
         """
         return
+    except Exception as err:
+        logger.error( 'Unknown Error' )
+        bot.send_message( chat_id = chat_id, text = 'Unknown Exception' )
+        bot.send_message( chat_id = chat_id, text = str( e )  )
+        return
 
     new_posts_total = getNewPosts(facebook_pages, pages_dict, last_posts_dates)
 	
-    createCheckJob( bot )
-
     logger.info('Checked all posts. Next check in '
           +str(settings['facebook_refresh_rate'])
           +' seconds.')
