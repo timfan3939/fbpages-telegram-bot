@@ -680,7 +680,7 @@ def periodicCheck(bot, job):
     except Exception as err:
         logger.error( 'Unknown Error' )
         bot.send_message( chat_id = chat_id, text = 'Unknown Exception' )
-        bot.send_message( chat_id = chat_id, text = str( e )  )
+        bot.send_message( chat_id = chat_id, text = str( err )  )
         return
 
     new_posts_total = getNewPosts(facebook_pages, pages_dict, last_posts_dates)
