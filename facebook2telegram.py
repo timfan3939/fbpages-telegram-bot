@@ -54,9 +54,9 @@ ydl = youtube_dl.YoutubeDL({'outtmpl': '%(id)s%(ext)s'})
 
 # -------------------------------------------------------- #
 
-settings = {}
+configurations = {}
 dir_path = None
-settings_path = None
+configurations_path = None
 dates_path = None
 graph = None
 facebook_pages = None
@@ -74,12 +74,12 @@ show_usage_limit_status = False
 
 def loadConfiguration(filename):
 	"""
-	Loads the settings from the .ini file
+	Loads the configurations from the .ini file
 	and stores them in global variables.
-	Use example.botsettings.ini as an example.
+	Use example.botconfigurations.ini as an example.
 	"""
 
-	global settings
+	global configurations
 
 	# Read configuration file
 	config = configparser.SafeConfigParser()
@@ -88,40 +88,40 @@ def loadConfiguration(filename):
 
 	# Load configurations
 	try:
-		settings['locale'] = config.get('facebook', 'locale')
-		settings['facebook_token'] = config.get('facebook', 'token')
-		settings['facebook_pages'] = ast.literal_eval(config.get("facebook", "pages"))
-		settings['facebook_refresh_rate'] = 1900.0
-		settings['facebook_refresh_rate_default'] = float(config.get('facebook', 'refreshrate'))
-		settings['facebook_page_per_request'] = int(config.get('facebook', 'pageperrequest'))
-		settings['allow_status'] = config.getboolean('facebook', 'status')
-		settings['allow_photo'] = config.getboolean('facebook', 'photo')
-		settings['allow_video'] = config.getboolean('facebook', 'video')
-		settings['allow_link'] = config.getboolean('facebook', 'link')
-		settings['allow_shared'] = config.getboolean('facebook', 'shared')
-		settings['allow_message'] = config.getboolean('facebook', 'message')
-		settings['telegram_token'] = config.get('telegram', 'token')
-		settings['channel_id'] = config.get('telegram', 'channel')
+		configurations['locale'] = config.get('facebook', 'locale')
+		configurations['facebook_token'] = config.get('facebook', 'token')
+		configurations['facebook_pages'] = ast.literal_eval(config.get("facebook", "pages"))
+		configurations['facebook_refresh_rate'] = 1900.0
+		configurations['facebook_refresh_rate_default'] = float(config.get('facebook', 'refreshrate'))
+		configurations['facebook_page_per_request'] = int(config.get('facebook', 'pageperrequest'))
+		configurations['allow_status'] = config.getboolean('facebook', 'status')
+		configurations['allow_photo'] = config.getboolean('facebook', 'photo')
+		configurations['allow_video'] = config.getboolean('facebook', 'video')
+		configurations['allow_link'] = config.getboolean('facebook', 'link')
+		configurations['allow_shared'] = config.getboolean('facebook', 'shared')
+		configurations['allow_message'] = config.getboolean('facebook', 'message')
+		configurations['telegram_token'] = config.get('telegram', 'token')
+		configurations['channel_id'] = config.get('telegram', 'channel')
 
-		logger.info('Loaded settings:')
-		logger.info('Locale: {}'.format( str(settings['locale'] ) ) )
-		logger.info('Channel: ' + settings['channel_id'])
-		logger.info('Refresh rate: ' + str(settings['facebook_refresh_rate']))
-		logger.info('Allow Status: ' + str(settings['allow_status']))
-		logger.info('Allow Photo: ' + str(settings['allow_photo']))
-		logger.info('Allow Video: ' + str(settings['allow_video']))
-		logger.info('Allow Link: ' + str(settings['allow_link']))
-		logger.info('Allow Shared: ' + str(settings['allow_shared']))
-		logger.info('Allow Message: ' + str(settings['allow_message']))
+		logger.info('Loaded configurations:')
+		logger.info('Locale: {}'.format( str(configurations['locale'] ) ) )
+		logger.info('Channel: ' + configurations['channel_id'])
+		logger.info('Refresh rate: ' + str(configurations['facebook_refresh_rate']))
+		logger.info('Allow Status: ' + str(configurations['allow_status']))
+		logger.info('Allow Photo: ' + str(configurations['allow_photo']))
+		logger.info('Allow Video: ' + str(configurations['allow_video']))
+		logger.info('Allow Link: ' + str(configurations['allow_link']))
+		logger.info('Allow Shared: ' + str(configurations['allow_shared']))
+		logger.info('Allow Message: ' + str(configurations['allow_message']))
 
 	except configparser.NoSectionError:
-		sys.exit('Fatal Error: Missing or invalid settings file.')
+		sys.exit('Fatal Error: Missing or invalid configurations file.')
 
 	except configparser.NoOptionError:
-		sys.exit('Fatal Error: Missing or invalid option in settings file.')
+		sys.exit('Fatal Error: Missing or invalid option in configurations file.')
 
 	except ValueError:
-		sys.exit('Fatal Error: Missing or invalid value in settings file.')
+		sys.exit('Fatal Error: Missing or invalid value in configurations file.')
 
 	except SyntaxError:
 		sys.exit('Fatal Error: Syntax error in page list.')
@@ -129,7 +129,7 @@ def loadConfiguration(filename):
 
 def loadFacebookGraph(facebook_token):
 	"""
-	Initialize Facebook GraphAPI with the token loaded from the settings file
+	Initialize Facebook GraphAPI with the token loaded from the configurations file
 	"""
 	global graph
 	graph = facebook.GraphAPI(access_token=facebook_token, version='3.0', timeout=120)
@@ -137,7 +137,7 @@ def loadFacebookGraph(facebook_token):
 
 def loadTelegramBot(telegram_token):
 	"""
-	Initialize Telegram Bot API with the token loaded from the settings file
+	Initialize Telegram Bot API with the token loaded from the configurations file
 	"""
 	global bot
 	global updater
@@ -197,7 +197,7 @@ def dateTimeDecoder(pairs, date_format="%Y-%m-%dT%H:%M:%S"):
 def loadDatesJSON( filename ):
 	"""
 	Loads the .json file containing the latest post's date for every page
-	loaded from the settings file to the 'last_posts_dates' dict
+	loaded from the configurations file to the 'last_posts_dates' dict
 	"""
 	with open( filename, 'r' ) as f:
 		loaded_json = json.load( f, object_pairs_hook = dateTimeDecoder )
@@ -209,7 +209,7 @@ def loadDatesJSON( filename ):
 def dumpDatesJSON(last_posts_dates, filename):
 	"""
 	Dumps the 'last_posts_dates' dict to a .json file containing the
-	latest post's date for every page loaded from the settings file.
+	latest post's date for every page loaded from the configurations file.
 	"""
 	with open(filename, 'w') as f:
 		json.dump(last_posts_dates, f,
@@ -222,7 +222,7 @@ def dumpDatesJSON(last_posts_dates, filename):
 def getMostRecentPostsDates(facebook_pages, filename):
 	"""
 	Gets the date for the most recent post for every page loaded from the
-	settings file. If there is a 'dates.json' file, load it. If not, fetch
+	configurations file. If there is a 'dates.json' file, load it. If not, fetch
 	the dates from Facebook and store them in the 'dates.json' file.
 	The .json file is used to keep track of the latest posts posted to
 	Telegram in case the bot is restarted after being down for a while.
@@ -444,10 +444,10 @@ def postLinkToChat(post, post_message, bot, chat_id):
 def checkIfAllowedAndPost(post, bot, chat_id):
 	"""
 	Checks the type of the Facebook post and if it's allowed by the
-	settings file, then calls the appropriate function for each type.
+	configurations file, then calls the appropriate function for each type.
 	"""
 	#If it's a shared post, call this function for the parent post
-	if 'parent_id' in post and settings['allow_shared']:
+	if 'parent_id' in post and configurations['allow_shared']:
 		logger.info('This is a shared post.')
 
 		if 'message' in post:
@@ -458,17 +458,17 @@ def checkIfAllowedAndPost(post, bot, chat_id):
 			id=post['parent_id'],
 			fields='created_time,type,message,full_picture,story,\
 					source,link,caption,parent_id,object_id',
-			locale=settings['locale'])
+			locale=configurations['locale'])
 		logger.info('Accessing parent post...')
 		checkIfAllowedAndPost(parent_post, bot, chat_id)
 		return True
 
 	"""
 	If there's a message in the post, and it's allowed by the
-	settings file, store it in 'post_message', which will be passed to
+	configurations file, store it in 'post_message', which will be passed to
 	another function based on the post type.
 	"""
-	if 'message' in post and settings['allow_message']:
+	if 'message' in post and configurations['allow_message']:
 		post_message = post['message']
 	else:
 		post_message = ''
@@ -484,19 +484,19 @@ def checkIfAllowedAndPost(post, bot, chat_id):
 		separate_message = ''
 		send_separate = False
 
-	if post['type'] == 'photo' and settings['allow_photo']:
+	if post['type'] == 'photo' and configurations['allow_photo']:
 		logger.info('Posting photo...')
 		media_message = postPhotoToChat(post, post_message, bot, chat_id)
 		if send_separate:
 			media_message.reply_text(separate_message)
 		return True
-	elif post['type'] == 'video' and settings['allow_video']:
+	elif post['type'] == 'video' and configurations['allow_video']:
 		logger.info('Posting video...')
 		media_message = postVideoToChat(post, post_message, bot, chat_id)
 		if send_separate:
 			media_message.reply_text(separate_message)
 		return True
-	elif post['type'] == 'status' and settings['allow_status']:
+	elif post['type'] == 'status' and configurations['allow_status']:
 		logger.info('Posting status...')
 		try:
 			bot.send_message(
@@ -509,7 +509,7 @@ def checkIfAllowedAndPost(post, bot, chat_id):
 				chat_id=chat_id,
 				text=post['story'])
 			return True
-	elif post['type'] == 'link' and settings['allow_link']:
+	elif post['type'] == 'link' and configurations['allow_link']:
 		logger.info('Posting link...')
 		postLinkToChat(post, post_message, bot, chat_id)
 		return True
@@ -589,7 +589,7 @@ def postNewPosts(new_posts_total, chat_id):
 
 
 def getNewPosts(facebook_pages, pages_dict, last_posts_dates):
-	#Iterate every page in the list loaded from the settings file
+	#Iterate every page in the list loaded from the configurations file
 	new_posts_total = []
 	for page in facebook_pages:
 		try:
@@ -629,9 +629,9 @@ def updateRequestList():
 	global request_seq
 	global facebook_pages
 
-	facebook_page_list = settings['facebook_pages']
+	facebook_page_list = configurations['facebook_pages']
 
-	request_size = settings['facebook_page_per_request']
+	request_size = configurations['facebook_page_per_request']
 	request_end = (request_seq + request_size) % len(facebook_page_list)
 
 	facebook_pages = []
@@ -643,7 +643,7 @@ def updateRequestList():
 def periodicCheck(bot, job):
 	"""
 	Checks for new posts for every page in the list loaded from the
-	settings file, posts them, and updates the dates.json file, which
+	configurations file, posts them, and updates the dates.json file, which
 	contains the date for the latest post posted to Telegram for every
 	page.
 	"""
@@ -663,7 +663,7 @@ def periodicCheck(bot, job):
 					posts{\
 						  created_time,type,message,full_picture,story,\
 						  source,link,caption,parent_id,object_id,permalink_url}',
-			locale=settings['locale'])
+			locale=configurations['locale'])
 
 		logger.info('Successfully fetched Facebook posts.')
 
@@ -678,8 +678,8 @@ def periodicCheck(bot, job):
 		bot.send_message( chat_id = chat_id, text=msg )
 
 		# Extends the refresh rate
-		settings['facebook_refresh_rate'] *= 2
-		logger.error( 'Extend refresh rate to {}.'.format( settings['facebook_refresh_rate'] ) )
+		configurations['facebook_refresh_rate'] *= 2
+		logger.error( 'Extend refresh rate to {}.'.format( configurations['facebook_refresh_rate'] ) )
 
 		"""
 		TODO: 'get_object' for every page individually, due to a bug
@@ -700,7 +700,7 @@ def periodicCheck(bot, job):
 	new_posts_total = getNewPosts(facebook_pages, pages_dict, last_posts_dates)
 
 	logger.info('Checked all posts. Next check in '
-		  +str(settings['facebook_refresh_rate'])
+		  +str(configurations['facebook_refresh_rate'])
 		  +' seconds.')
 
 	postNewPosts(new_posts_total, chat_id)
@@ -725,14 +725,14 @@ def createCheckJob(bot):
 	"""
 	global facebook_job
 
-	settings['facebook_refresh_rate'] -= 230.0
+	configurations['facebook_refresh_rate'] -= 230.0
 
-	if settings['facebook_refresh_rate'] > 3600:
-		settings['facebook_refresh_rate'] = 3600
-	elif settings['facebook_refresh_rate'] < settings['facebook_refresh_rate_default']:
-		settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
+	if configurations['facebook_refresh_rate'] > 3600:
+		configurations['facebook_refresh_rate'] = 3600
+	elif configurations['facebook_refresh_rate'] < settings['facebook_refresh_rate_default']:
+		configurations['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
 
-	facebook_job = job_queue.run_once( periodicCheck, settings['facebook_refresh_rate'], context = settings['channel_id'] )
+	facebook_job = job_queue.run_once( periodicCheck, configurations['facebook_refresh_rate'], context = settings['channel_id'] )
 
 	logger.info('Job created.')
 
@@ -743,7 +743,7 @@ def error(bot, update, error):
 def statusHandler( bot, update ):
 	rateLimitStatus = getRateLimitStatus()
 	msg = 'Refresh Rate: {:.2f} minutes\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format(
-		settings['facebook_refresh_rate']/60,
+		configurations['facebook_refresh_rate']/60,
 		rateLimitStatus['call_count'],
 		rateLimitStatus['total_time'],
 		rateLimitStatus['total_cputime']
@@ -757,21 +757,21 @@ def startHandler( bot, update ):
 	bot.send_message( chat_id = update.message.chat_id, text = msg )
 
 def extendHandler( bot, update ):
-	settings['facebook_refresh_rate'] = settings['facebook_refresh_rate'] * 4
+	configurations['facebook_refresh_rate'] = settings['facebook_refresh_rate'] * 4
 	msg = str.format(
 		'Extending the refresh rate to {:.2f} minutes',
-		settings['facebook_refresh_rate']/60.0
+		configurations['facebook_refresh_rate']/60.0
 	)
 	bot.send_message( chat_id = update.message.chat_id, text = msg )
 
 def resetHandler( bot, update ):
-	settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
-	msg = 'Reset refresh rate to {:.2f} minutes'.format( settings['facebook_refresh_rate']/60.0 )
+	configurations['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
+	msg = 'Reset refresh rate to {:.2f} minutes'.format( configurations['facebook_refresh_rate']/60.0 )
 	bot.send_message( chat_id = update.message.chat_id, text = msg )
 
 def reduceHandler( bot, update ):
-	settings['facebook_refresh_rate'] -= 250.0
-	msg = 'Reduce refresh rate to {:.2f} minutes'.format( settings['facebook_refresh_rate']/60.0 )
+	configurations['facebook_refresh_rate'] -= 250.0
+	msg = 'Reduce refresh rate to {:.2f} minutes'.format( configurations['facebook_refresh_rate']/60.0 )
 	bot.send_message( chat_id = update.message.chat_id, text = msg )
 
 def toggleRateLimitStatus( bot, update ):
@@ -785,7 +785,7 @@ def echoHandler( bot, update ):
 
 def getRateLimitStatus():
 	url = 'https://graph.facebook.com/v3.0/me'
-	args = { 'access_token': settings['facebook_token'] }
+	args = { 'access_token': configurations['facebook_token'] }
 	respond = requests.get( url, params = args )
 
 	rateLimitStatus = json.loads( respond.headers['x-app-usage'] )
@@ -795,18 +795,18 @@ def getRateLimitStatus():
 def main():
 	global facebook_pages
 	global dir_path
-	global settings_path
+	global configurations_path
 	global dates_path
 	global facebook_job
 
 	dir_path = path.dirname(path.realpath(__file__))
-	settings_path = dir_path+'/botsettings.ini'
+	configurations_path = dir_path+'/botsettings.ini'
 	dates_path = dir_path+'/dates.json'
 
-	loadConfiguration(settings_path)
-	loadFacebookGraph(settings['facebook_token'])
-	loadTelegramBot(settings['telegram_token'])
-	facebook_pages = settings['facebook_pages']
+	loadConfiguration(configurations_path)
+	loadFacebookGraph(configurations['facebook_token'])
+	loadTelegramBot(configurations['telegram_token'])
+	facebook_pages = configurations['facebook_pages']
 
 
 	# Test if new page added
@@ -818,7 +818,7 @@ def main():
 		startPage += 40
 		sleep(10)
 
-	facebook_job = job_queue.run_once( periodicCheck, 0, context = settings['channel_id'] )
+	facebook_job = job_queue.run_once( periodicCheck, 0, context = configurations['channel_id'] )
 
 	#Log all errors
 	dispatcher.add_handler( CommandHandler( 'status', statusHandler ) )
