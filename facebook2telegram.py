@@ -55,24 +55,27 @@ ydl = youtube_dl.YoutubeDL({'outtmpl': '%(id)s%(ext)s'})
 
 # ======================================================== #
 
+# ----- General Global Variables ----- #
+
 configurations = {}
 workingDirectory = None
 lastUpdateRecordFile = None
 lastUpdateRecords = {}
+request_seq = 0
+show_usage_limit_status = False
 
-# ----- Done ----- #
-
+# ----- Facebook Global Variables ----- #
 
 graph = None
 facebook_pages = None
+facebook_job = None
+
+# ----- Telegram Global Variables ----- #
 
 bot = None
 updater = None
 dispatcher = None
 job_queue = None
-facebook_job = None
-request_seq = 0
-show_usage_limit_status = False
 
 # -------------------------------------------------------- #
 
