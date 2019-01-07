@@ -66,7 +66,7 @@ show_usage_limit_status = False
 
 # ----- Facebook Global Variables ----- #
 
-graph = None
+facebook_graph = None
 facebook_pages = None
 facebook_job = None
 
@@ -136,8 +136,8 @@ def loadFacebookGraph(facebook_token):
 	"""
 	Initialize Facebook GraphAPI with the token loaded from the configurations file
 	"""
-	global graph
-	graph = facebook.GraphAPI(access_token=facebook_token, version='3.0', timeout=120)
+	global facebook_graph
+	facebook_graph = facebook.GraphAPI(access_token=facebook_token, version='3.0', timeout=120)
 
 
 def loadTelegramBot(telegram_token):
@@ -254,7 +254,7 @@ def getMostRecentPostsDates(facebook_pages, filename):
 	if len( new_facebook_pages ) == 0:
 		return
 
-	last_posts = graph.get_objects(
+	last_posts = facebook_graph.get_objects(
 			ids = new_facebook_pages,
 			fields = 'name,posts.limit(1){created_time}'
 	)
@@ -276,7 +276,7 @@ def getDirectURLVideo(video_id):
 	Get direct URL for the video using GraphAPI and the post's 'object_id'
 	"""
 	logger.info('Getting direct URL...')
-	video_post = graph.get_object(
+	video_post = facebook_graph.get_object(
 			id=video_id,
 			fields='source')
 
@@ -459,7 +459,7 @@ def checkIfAllowedAndPost(post, bot, chat_id):
 			bot.send_message( chat_id = chat_id, text = post['message'] )
 
 
-		parent_post = graph.get_object(
+		parent_post = facebook_graph.get_object(
 			id=post['parent_id'],
 			fields='created_time,type,message,full_picture,story,\
 					source,link,caption,parent_id,object_id',
@@ -662,7 +662,7 @@ def periodicCheck(bot, job):
 
 	try:
 		#Request to the GraphAPI with all the pages (list) and required fields
-		pages_dict = graph.get_objects(
+		pages_dict = facebook_graph.get_objects(
 			ids=facebook_pages,
 			fields='name,\
 					posts{\
