@@ -55,6 +55,7 @@ dispatcher = None
 job_queue = None
 facebook_job = None
 request_seq = 0
+show_usage_limit_status = False
 
 
 def loadSettingsFile(filename):
@@ -156,7 +157,7 @@ class dateTimeEncoder(json.JSONEncoder):
         if isinstance(o, datetime):
             serial = o.isoformat()  #Save in ISO format
             return serial
-        
+
         return super().default( o )
 
 
@@ -634,6 +635,7 @@ def periodicCheck(bot, job):
     """
     
     updateRequestList()
+    createCheckJob( bot )
     
     global last_posts_dates
     chat_id = job.context
@@ -663,7 +665,6 @@ def periodicCheck(bot, job):
 
         # Extends the refresh rate
         settings['facebook_refresh_rate'] *= 2
-        createCheckJob( bot )
         logger.error( 'Extend refresh rate to {}.'.format( settings['facebook_refresh_rate'] ) )
 
         """
@@ -676,15 +677,14 @@ def periodicCheck(bot, job):
         App Token, with the downside of having to renew it every two months.
         """
         return
+    except Exception as err:
+        logger.error( 'Unknown Error' )
+        bot.send_message( chat_id = chat_id, text = 'Unknown Exception' )
+        bot.send_message( chat_id = chat_id, text = str( err )  )
+        return
 
     new_posts_total = getNewPosts(facebook_pages, pages_dict, last_posts_dates)
-
-    settings['facebook_refresh_rate'] -= ( settings['facebook_refresh_rate_default'] / 3 )
 	
-    if settings['facebook_refresh_rate'] < settings['facebook_refresh_rate_default']:
-        settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
-    createCheckJob( bot )
-
     logger.info('Checked all posts. Next check in '
           +str(settings['facebook_refresh_rate'])
           +' seconds.')
@@ -695,14 +695,15 @@ def periodicCheck(bot, job):
         logger.info('Posted all new posts.')
     else:
         logger.info('No new posts.')
-
-    rateLimitStatus = getRateLimitStatus()
-    msg = '=== Rate Limit Status ===\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format(
-        rateLimitStatus['call_count'],
-        rateLimitStatus['total_time'],
-        rateLimitStatus['total_cputime']
-    )
-    bot.send_message( chat_id = chat_id, text = msg )
+    
+    if show_usage_limit_status: 
+        rateLimitStatus = getRateLimitStatus()
+        msg = '=== Rate Limit Status ===\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format(
+            rateLimitStatus['call_count'],
+            rateLimitStatus['total_time'],
+            rateLimitStatus['total_cputime']
+        )
+        bot.send_message( chat_id = chat_id, text = msg )
 
 def createCheckJob(bot):
     """
@@ -710,8 +711,12 @@ def createCheckJob(bot):
     """
     global facebook_job
 
+    settings['facebook_refresh_rate'] -= 230.0
+
     if settings['facebook_refresh_rate'] > 3600:
         settings['facebook_refresh_rate'] = 3600
+    elif settings['facebook_refresh_rate'] < settings['facebook_refresh_rate_default']:
+        settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
 
     facebook_job = job_queue.run_once( periodicCheck, settings['facebook_refresh_rate'], context = settings['channel_id'] )
 
@@ -751,10 +756,14 @@ def resetHandler( bot, update ):
     bot.send_message( chat_id = update.message.chat_id, text = msg )
 
 def reduceHandler( bot, update ):
-    settings['facebook_refresh_rate'] -= ( settings['facebook_refresh_rate_default'] / 1.5 )
-    if settings['facebook_refresh_rate'] < settings['facebook_refresh_rate_default']:
-        settings['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
+    settings['facebook_refresh_rate'] -= 250.0
     msg = 'Reduce refresh rate to {:.2f} minutes'.format( settings['facebook_refresh_rate']/60.0 )
+    bot.send_message( chat_id = update.message.chat_id, text = msg )
+
+def toggleRateLimitStatus( bot, update ):
+    global show_usage_limit_status
+    msg = '{} Rate Limit Status while updating.'.format( 'Hide' if show_usage_limit_status else 'Show' )
+    show_usage_limit_status = not show_usage_limit_status
     bot.send_message( chat_id = update.message.chat_id, text = msg )
 
 def echoHandler( bot, update ):
@@ -800,9 +809,10 @@ def main():
     #Log all errors
     dispatcher.add_handler( CommandHandler( 'status', statusHandler ) )
     dispatcher.add_handler( CommandHandler( 'extend', extendHandler ) )
-    dispatcher.add_handler( CommandHandler( 'start', startHandler) )
-    dispatcher.add_handler( CommandHandler( 'reduce', reduceHandler) )
-    dispatcher.add_handler( CommandHandler( 'reset', resetHandler) )
+    dispatcher.add_handler( CommandHandler( 'start', startHandler ) )
+    dispatcher.add_handler( CommandHandler( 'reduce', reduceHandler ) )
+    dispatcher.add_handler( CommandHandler( 'reset', resetHandler ) )
+    dispatcher.add_handler( CommandHandler( 'toggle', toggleRateLimitStatus ) )
     dispatcher.add_handler( MessageHandler( Filters.text, echoHandler ) )
     dispatcher.add_error_handler(error)
 
