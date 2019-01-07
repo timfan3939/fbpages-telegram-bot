@@ -39,16 +39,16 @@ import facebook
 import logging
 import logging.handlers
 logging.basicConfig(
-	format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-	level=logging.INFO,
+	format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+	level = logging.INFO,
 	handlers = [
 		logging.handlers.TimedRotatingFileHandler(
 			filename = 'log/fb2tg.log',
 			when = 'midnight',
-			atTime = datetime(year=2018, month=1, day=1, hour=0, minute=0, second=0).time() ) ] )
+			atTime = datetime( year=2018, month=1, day=1, hour=0, minute=0, second=0 ).time() ) ] )
 logger = logging.getLogger(__name__)
 
-# youtube-dl. Remove is pending
+# youtube-dl. Removal is pending
 import youtube_dl
 ydl = youtube_dl.YoutubeDL({'outtmpl': '%(id)s%(ext)s'})
 
