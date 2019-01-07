@@ -73,27 +73,27 @@ show_usage_limit_status = False
 # -------------------------------------------------------- #
 
 
-def loadSettingsFile(filename):
+def loadConfiguration(filename):
 	"""
 	Loads the settings from the .ini file
 	and stores them in global variables.
 	Use example.botsettings.ini as an example.
 	"""
-	#Read config file
-	config = configparser.SafeConfigParser()
-	config.read(filename)
 
 	global settings
 
-	#Load config
+	# Read configuration file
+	config = configparser.SafeConfigParser()
+	config.read(filename)
+
+
+	# Load configurations
 	try:
 		settings['locale'] = config.get('facebook', 'locale')
 		settings['facebook_token'] = config.get('facebook', 'token')
-		settings['facebook_pages'] = ast.literal_eval(
-										config.get("facebook", "pages"))
+		settings['facebook_pages'] = ast.literal_eval(config.get("facebook", "pages"))
 		settings['facebook_refresh_rate'] = 1900.0
-		settings['facebook_refresh_rate_default'] = float(
-										config.get('facebook', 'refreshrate'))
+		settings['facebook_refresh_rate_default'] = float(config.get('facebook', 'refreshrate'))
 		settings['facebook_page_per_request'] = int(config.get('facebook', 'pageperrequest'))
 		settings['allow_status'] = config.getboolean('facebook', 'status')
 		settings['allow_photo'] = config.getboolean('facebook', 'photo')
@@ -804,7 +804,7 @@ def main():
 	settings_path = dir_path+'/botsettings.ini'
 	dates_path = dir_path+'/dates.json'
 
-	loadSettingsFile(settings_path)
+	loadConfiguration(settings_path)
 	loadFacebookGraph(settings['facebook_token'])
 	loadTelegramBot(settings['telegram_token'])
 	facebook_pages = settings['facebook_pages']
