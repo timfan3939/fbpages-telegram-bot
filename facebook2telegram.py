@@ -58,13 +58,14 @@ ydl = youtube_dl.YoutubeDL({'outtmpl': '%(id)s%(ext)s'})
 configurations = {}
 workingDirectory = None
 lastUpdateRecordFile = None
+lastUpdateRecords = {}
 
 # ----- Done ----- #
 
 
 graph = None
 facebook_pages = None
-last_posts_dates = {}
+
 bot = None
 updater = None
 dispatcher = None
@@ -198,7 +199,7 @@ def dateTimeDecoder(pairs, date_format="%Y-%m-%dT%H:%M:%S"):
 def loadDatesJSON( filename ):
 	"""
 	Loads the .json file containing the latest post's date for every page
-	loaded from the configurations file to the 'last_posts_dates' dict
+	loaded from the configurations file to the 'lastUpdateRecords' dict
 	"""
 	with open( filename, 'r' ) as f:
 		loaded_json = json.load( f, object_pairs_hook = dateTimeDecoder )
@@ -207,13 +208,13 @@ def loadDatesJSON( filename ):
 	return loaded_json
 
 
-def dumpDatesJSON(last_posts_dates, filename):
+def dumpDatesJSON(lastUpdateRecords, filename):
 	"""
-	Dumps the 'last_posts_dates' dict to a .json file containing the
+	Dumps the 'lastUpdateRecords' dict to a .json file containing the
 	latest post's date for every page loaded from the configurations file.
 	"""
 	with open(filename, 'w') as f:
-		json.dump(last_posts_dates, f,
+		json.dump(lastUpdateRecords, f,
 				  sort_keys=True, indent=4, cls=dateTimeEncoder)
 
 	logger.info('Dumped JSON file.')
@@ -230,20 +231,20 @@ def getMostRecentPostsDates(facebook_pages, filename):
 	"""
 	logger.info('Getting most recent posts dates...')
 
-	global last_posts_dates
+	global lastUpdateRecords
 
 	# Check if dates.json exists.  If not, create one.
 	try:
-		last_posts_dates = loadDatesJSON( filename )
+		lastUpdateRecords = loadDatesJSON( filename )
 	except (IOError, ValueError):
-		last_posts_dates = {}
-		dumpDatesJSON( last_posts_dates, filename )
+		lastUpdateRecords = {}
+		dumpDatesJSON( lastUpdateRecords, filename )
 
 	# Check if any new page ID is added
 	new_facebook_pages = []
 
 	for page in facebook_pages:
-		if page not in last_posts_dates:
+		if page not in lastUpdateRecords:
 			new_facebook_pages.append( page )
 			logger.info( 'Checking if page {} went online...'.format( page ) )
 
@@ -258,8 +259,8 @@ def getMostRecentPostsDates(facebook_pages, filename):
 	for page in new_facebook_pages:
 		try:
 			last_post = last_posts[page]['posts']['data'][0]
-			last_posts_dates[page] = parsePostDate( last_post )
-			dumpDatesJSON( last_posts_dates, filename )
+			lastUpdateRecords[page] = parsePostDate( last_post )
+			dumpDatesJSON( lastUpdateRecords, filename )
 			logger.info( 'Page {} ({}) went online.'.format( last_posts[page]['name'], page ) )
 
 		except KeyError:
@@ -548,7 +549,7 @@ def postToChat(post, bot, chat_id):
 
 
 def postNewPosts(new_posts_total, chat_id):
-	global last_posts_dates
+	global lastUpdateRecords
 	global headerPosted
 	new_posts_total_count = len(new_posts_total)
 
@@ -579,8 +580,8 @@ def postNewPosts(new_posts_total, chat_id):
 			bot.send_message( chat_id = chat_id, text = msg )
 		finally:
 			if headerPosted:
-				last_posts_dates[posts_page] = parsePostDate(post)
-				dumpDatesJSON(last_posts_dates, lastUpdateRecordFile)
+				lastUpdateRecords[posts_page] = parsePostDate(post)
+				dumpDatesJSON(lastUpdateRecords, lastUpdateRecordFile)
 				post_left -= 1
 			bot.send_message( chat_id = chat_id, text = '{} post(s) left'.format(post_left) )
 
@@ -589,7 +590,7 @@ def postNewPosts(new_posts_total, chat_id):
 	logger.info('{} posts posted to Telegram'.format(new_posts_total_count))
 
 
-def getNewPosts(facebook_pages, pages_dict, last_posts_dates):
+def getNewPosts(facebook_pages, pages_dict, lastUpdateRecords):
 	#Iterate every page in the list loaded from the configurations file
 	new_posts_total = []
 	for page in facebook_pages:
@@ -602,7 +603,7 @@ def getNewPosts(facebook_pages, pages_dict, last_posts_dates):
 
 			#List of posts posted after "last posted date" for current page
 			new_posts = list(filter(
-				lambda post: parsePostDate(post) > last_posts_dates[page],
+				lambda post: parsePostDate(post) > lastUpdateRecords[page],
 				posts_data))
 
 			if not new_posts:
@@ -652,7 +653,7 @@ def periodicCheck(bot, job):
 	updateRequestList()
 	createCheckJob( bot )
 
-	global last_posts_dates
+	global lastUpdateRecords
 	chat_id = job.context
 	logger.info('Accessing Facebook...')
 
@@ -698,7 +699,7 @@ def periodicCheck(bot, job):
 		bot.send_message( chat_id = chat_id, text = str( err )  )
 		return
 
-	new_posts_total = getNewPosts(facebook_pages, pages_dict, last_posts_dates)
+	new_posts_total = getNewPosts(facebook_pages, pages_dict, lastUpdateRecords)
 
 	logger.info('Checked all posts. Next check in '
 		  +str(configurations['facebook_refresh_rate'])
