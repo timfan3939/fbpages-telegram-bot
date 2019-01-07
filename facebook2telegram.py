@@ -1,34 +1,44 @@
+#!/usr/bin/python3
 # coding=utf-8
-import ast                                      #Used for pages list in ini
-import configparser                             #Used for loading configs
-import json                                     #Used for tacking last dates
-import logging                                  #Used for logging
-import logging.handlers
+
+# Pages list in ini file
+import ast
+
+# Load configurations
+import configparser
+
+# Track last update dates
+import json
+
 from os import remove
 from os import path
-import sys                                      #Used for exiting the program
-from time import sleep
-from datetime import datetime                   #Used for date comparison
-from urllib import request                      #Used for downloading media
 
+# For exiting the program
+import sys
+from time import sleep
+
+# Date comparison
+from datetime import datetime
+
+# Download media
+from urllib import request
 import requests
 
-import telegram                                 #telegram-bot-python
+# telegram-bot-python and Errors
+import telegram
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-from telegram.error import TelegramError        #Error handling
-from telegram.error import InvalidToken         #Error handling
-from telegram.error import BadRequest           #Error handling
-from telegram.error import TimedOut             #Error handling
-from telegram.error import NetworkError         #Error handling
+from telegram.error import TelegramError
+from telegram.error import InvalidToken
+from telegram.error import BadRequest
+from telegram.error import TimedOut
+from telegram.error import NetworkError
 
-import facebook                                 #facebook-sdk
+# facebook-sdk
+import facebook
 
-import youtube_dl                               #youtube-dl
-
-
-#Global Variables
-
-#Logging
+# Logging
+import logging
+import logging.handlers
 logging.basicConfig(
 	format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
 	level=logging.INFO,
@@ -39,8 +49,11 @@ logging.basicConfig(
 			atTime = datetime(year=2018, month=1, day=1, hour=0, minute=0, second=0).time() ) ] )
 logger = logging.getLogger(__name__)
 
-#youtube-dl
+# youtube-dl. Remove is pending
+import youtube_dl
 ydl = youtube_dl.YoutubeDL({'outtmpl': '%(id)s%(ext)s'})
+
+# -------------------------------------------------------- #
 
 settings = {}
 dir_path = None
@@ -56,6 +69,8 @@ job_queue = None
 facebook_job = None
 request_seq = 0
 show_usage_limit_status = False
+
+# -------------------------------------------------------- #
 
 
 def loadSettingsFile(filename):
