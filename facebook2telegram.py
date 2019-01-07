@@ -85,7 +85,6 @@ def loadConfiguration(filename):
 	config = configparser.SafeConfigParser()
 	config.read(filename)
 
-
 	# Load configurations
 	try:
 		configurations['locale'] = config.get('facebook', 'locale')
@@ -103,28 +102,26 @@ def loadConfiguration(filename):
 		configurations['telegram_token'] = config.get('telegram', 'token')
 		configurations['channel_id'] = config.get('telegram', 'channel')
 
-		logger.info('Loaded configurations:')
-		logger.info('Locale: {}'.format( str(configurations['locale'] ) ) )
-		logger.info('Channel: ' + configurations['channel_id'])
-		logger.info('Refresh rate: ' + str(configurations['facebook_refresh_rate']))
-		logger.info('Allow Status: ' + str(configurations['allow_status']))
-		logger.info('Allow Photo: ' + str(configurations['allow_photo']))
-		logger.info('Allow Video: ' + str(configurations['allow_video']))
-		logger.info('Allow Link: ' + str(configurations['allow_link']))
-		logger.info('Allow Shared: ' + str(configurations['allow_shared']))
-		logger.info('Allow Message: ' + str(configurations['allow_message']))
-
 	except configparser.NoSectionError:
 		sys.exit('Fatal Error: Missing or invalid configurations file.')
-
 	except configparser.NoOptionError:
 		sys.exit('Fatal Error: Missing or invalid option in configurations file.')
-
 	except ValueError:
 		sys.exit('Fatal Error: Missing or invalid value in configurations file.')
-
 	except SyntaxError:
 		sys.exit('Fatal Error: Syntax error in page list.')
+	
+	
+	logger.info('Loaded configurations:')
+	logger.info('Locale: {}'.format( str(configurations['locale'] ) ) )
+	logger.info('Channel: ' + configurations['channel_id'])
+	logger.info('Refresh rate: ' + str(configurations['facebook_refresh_rate']))
+	logger.info('Allow Status: ' + str(configurations['allow_status']))
+	logger.info('Allow Photo: ' + str(configurations['allow_photo']))
+	logger.info('Allow Video: ' + str(configurations['allow_video']))
+	logger.info('Allow Link: ' + str(configurations['allow_link']))
+	logger.info('Allow Shared: ' + str(configurations['allow_shared']))
+	logger.info('Allow Message: ' + str(configurations['allow_message']))
 
 
 def loadFacebookGraph(facebook_token):
@@ -729,10 +726,10 @@ def createCheckJob(bot):
 
 	if configurations['facebook_refresh_rate'] > 3600:
 		configurations['facebook_refresh_rate'] = 3600
-	elif configurations['facebook_refresh_rate'] < settings['facebook_refresh_rate_default']:
-		configurations['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
+	elif configurations['facebook_refresh_rate'] < configurations['facebook_refresh_rate_default']:
+		configurations['facebook_refresh_rate'] = configurations['facebook_refresh_rate_default']
 
-	facebook_job = job_queue.run_once( periodicCheck, configurations['facebook_refresh_rate'], context = settings['channel_id'] )
+	facebook_job = job_queue.run_once( periodicCheck, configurations['facebook_refresh_rate'], context = configurations['channel_id'] )
 
 	logger.info('Job created.')
 
@@ -757,7 +754,7 @@ def startHandler( bot, update ):
 	bot.send_message( chat_id = update.message.chat_id, text = msg )
 
 def extendHandler( bot, update ):
-	configurations['facebook_refresh_rate'] = settings['facebook_refresh_rate'] * 4
+	configurations['facebook_refresh_rate'] = configurations['facebook_refresh_rate'] * 4
 	msg = str.format(
 		'Extending the refresh rate to {:.2f} minutes',
 		configurations['facebook_refresh_rate']/60.0
@@ -765,7 +762,7 @@ def extendHandler( bot, update ):
 	bot.send_message( chat_id = update.message.chat_id, text = msg )
 
 def resetHandler( bot, update ):
-	configurations['facebook_refresh_rate'] = settings['facebook_refresh_rate_default']
+	configurations['facebook_refresh_rate'] = configurations['facebook_refresh_rate_default']
 	msg = 'Reset refresh rate to {:.2f} minutes'.format( configurations['facebook_refresh_rate']/60.0 )
 	bot.send_message( chat_id = update.message.chat_id, text = msg )
 
