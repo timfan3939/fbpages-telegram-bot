@@ -57,11 +57,11 @@ ydl = youtube_dl.YoutubeDL({'outtmpl': '%(id)s%(ext)s'})
 
 configurations = {}
 workingDirectory = None
+lastUpdateRecordFile = None
 
 # ----- Done ----- #
 
 
-dates_path = None
 graph = None
 facebook_pages = None
 last_posts_dates = {}
@@ -580,7 +580,7 @@ def postNewPosts(new_posts_total, chat_id):
 		finally:
 			if headerPosted:
 				last_posts_dates[posts_page] = parsePostDate(post)
-				dumpDatesJSON(last_posts_dates, dates_path)
+				dumpDatesJSON(last_posts_dates, lastUpdateRecordFile)
 				post_left -= 1
 			bot.send_message( chat_id = chat_id, text = '{} post(s) left'.format(post_left) )
 
@@ -796,11 +796,11 @@ def getRateLimitStatus():
 def main():
 	global facebook_pages
 	global workingDirectory
-	global dates_path
+	global lastUpdateRecordFile
 	global facebook_job
 
 	workingDirectory = path.dirname(path.realpath(__file__))
-	dates_path = workingDirectory+'/dates.json'
+	lastUpdateRecordFile = workingDirectory + '/dates.json'
 
 	loadConfiguration( workingDirectory + '/botsettings.ini' )
 	loadFacebookGraph(configurations['facebook_token'])
@@ -812,7 +812,7 @@ def main():
 	startPage = 0
 	while startPage < len(facebook_pages):
 		endPage = (startPage + 40) if ( (startPage + 40) < len(facebook_pages) ) else len(facebook_pages)
-		getMostRecentPostsDates(facebook_pages[startPage:endPage], dates_path)
+		getMostRecentPostsDates(facebook_pages[startPage:endPage], lastUpdateRecordFile)
 		# facebook only allow requesting 50 pages at a time
 		startPage += 40
 		sleep(10)
