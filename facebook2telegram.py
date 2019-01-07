@@ -1,15 +1,14 @@
 #!/usr/bin/python3
 # coding=utf-8
 
-# Pages list in ini file
+# For loading configuration
 import ast
-
-# Load configurations
 import configparser
 
-# Track last update dates
+# For tracking pages' last update time
 import json
 
+# File Handling
 from os import remove
 from os import path
 
