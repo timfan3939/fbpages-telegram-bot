@@ -56,12 +56,11 @@ ydl = youtube_dl.YoutubeDL({'outtmpl': '%(id)s%(ext)s'})
 # ======================================================== #
 
 configurations = {}
-executionPath = None
+workingDirectory = None
 
 # ----- Done ----- #
 
 
-configurations_path = None
 dates_path = None
 graph = None
 facebook_pages = None
@@ -320,15 +319,15 @@ def postPhotoToChat(post, post_message, bot, chat_id):
 		"""
 		try:
 			logger.info('Sending by URL failed, downloading file...')
-			request.urlretrieve(direct_link, executionPath+'/temp.jpg')
+			request.urlretrieve(direct_link, workingDirectory+'/temp.jpg')
 			logger.info('Sending file...')
-			with open(executionPath+'/temp.jpg', 'rb') as picture:
+			with open(workingDirectory+'/temp.jpg', 'rb') as picture:
 				message = bot.send_photo(
 					chat_id=chat_id,
 					photo=picture,
 					caption=post_message,
 					timeout=120)
-			remove(executionPath+'/temp.jpg')   #Delete the temp picture
+			remove(workingDirectory+'/temp.jpg')   #Delete the temp picture
 			return message
 
 		except TimedOut:
@@ -338,13 +337,13 @@ def postPhotoToChat(post, post_message, bot, chat_id):
 			"""
 			logger.warning('File upload timed out, trying again...')
 			logger.info('Sending file...')
-			with open(executionPath+'/temp.jpg', 'rb') as picture:
+			with open(workingDirectory+'/temp.jpg', 'rb') as picture:
 				message = bot.send_photo(
 					chat_id=chat_id,
 					photo=picture,
 					caption=post_message,
 					timeout=200)
-			remove(executionPath+'/temp.jpg')   #Delete the temp picture
+			remove(workingDirectory+'/temp.jpg')   #Delete the temp picture
 			return message
 
 		except BadRequest:
@@ -409,15 +408,15 @@ def postVideoToChat(post, post_message, bot, chat_id):
 					try:
 						logger.warning('Sending by URL failed, downloading file...')
 						request.urlretrieve(post['source'],
-											executionPath+'/temp.mp4')
+											workingDirectory+'/temp.mp4')
 						logger.info('Sending file...')
-						with open(executionPath+'/temp.mp4', 'rb') as video:
+						with open(workingDirectory+'/temp.mp4', 'rb') as video:
 							message = bot.send_video(
 								chat_id=chat_id,
 								video=video,
 								caption=post_message,
 								timeout=120)
-						remove(executionPath+'/temp.mp4')   #Delete the temp video
+						remove(workingDirectory+'/temp.mp4')   #Delete the temp video
 						return message
 					except NetworkError:
 						logger.warning('Could not post video, sending link...')
@@ -796,16 +795,14 @@ def getRateLimitStatus():
 
 def main():
 	global facebook_pages
-	global executionPath
-	global configurations_path
+	global workingDirectory
 	global dates_path
 	global facebook_job
 
-	executionPath = path.dirname(path.realpath(__file__))
-	configurations_path = executionPath+'/botsettings.ini'
-	dates_path = executionPath+'/dates.json'
+	workingDirectory = path.dirname(path.realpath(__file__))
+	dates_path = workingDirectory+'/dates.json'
 
-	loadConfiguration(configurations_path)
+	loadConfiguration( workingDirectory + '/botsettings.ini' )
 	loadFacebookGraph(configurations['facebook_token'])
 	loadTelegramBot(configurations['telegram_token'])
 	facebook_pages = configurations['facebook_pages']
