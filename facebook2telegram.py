@@ -69,10 +69,10 @@ facebook_pages = None
 facebook_job = None
 
 # ----- Telegram Global Variables ----- #
-bot = None
-updater = None
-dispatcher = None
-job_queue = None
+telegramBot = None
+telegramUpdater = None
+telegramDispatcher = None
+telegramJobQueue = None
 
 # -------------------------------------------------------- #
 
@@ -143,19 +143,19 @@ def loadTelegramBot(telegram_token):
 	"""
 	Initialize Telegram Bot API with the token loaded from the configurations file
 	"""
-	global bot
-	global updater
-	global dispatcher
-	global job_queue
+	global telegramBot
+	global telegramUpdater
+	global telegramDispatcher
+	global telegramJobQueue
 
 	try:
-		bot = telegram.Bot(token=telegram_token)
+		telegramBot = telegram.Bot(token=telegram_token)
 	except InvalidToken:
 	   sys.exit('Fatal Error: Invalid Telegram Token')
 
-	updater = Updater(token=telegram_token)
-	dispatcher = updater.dispatcher
-	job_queue = updater.job_queue
+	telegramUpdater = Updater(token=telegram_token)
+	telegramDispatcher = telegramUpdater.dispatcher
+	telegramJobQueue = telegramUpdater.job_queue
 
 
 def parsePostDate(post):
@@ -565,27 +565,27 @@ def postNewPosts(new_posts_total, chat_id):
 		headerPosted = False
 
 		try:
-			postToChat(post, bot, chat_id)
+			postToChat(post, telegramBot, chat_id)
 		except BadRequest as e:
 			logger.error('Error: Telegram could not send the message')
 			logger.error('Message: {}'.format(e.message))
-			bot.send_message( chat_id = chat_id, text = 'Bad Request Exception')
+			telegramBot.send_message( chat_id = chat_id, text = 'Bad Request Exception')
 			#raise
 		except KeyError:
 			logger.error('Error: Got Key Error, ignore the post from {}'.format(post['pagename']))
 			logger.exception(' ')
-			bot.send_message( chat_id = chat_id, text = 'Key Error Exception from page {}'.format(post['pagename']))
+			telegramBot.send_message( chat_id = chat_id, text = 'Key Error Exception from page {}'.format(post['pagename']))
 			headerPosted = True
 		except Exception as e:
 			msg = 'Unknown Error: {} when processing page {}'.format( type(e), posts_page )
 			logger.error(msg)
-			bot.send_message( chat_id = chat_id, text = msg )
+			telegramBot.send_message( chat_id = chat_id, text = msg )
 		finally:
 			if headerPosted:
 				lastUpdateRecords[posts_page] = parsePostDate(post)
 				dumpDatesJSON(lastUpdateRecords, lastUpdateRecordFile)
 				post_left -= 1
-			bot.send_message( chat_id = chat_id, text = '{} post(s) left'.format(post_left) )
+			telegramBot.send_message( chat_id = chat_id, text = '{} post(s) left'.format(post_left) )
 
 		logger.info('Waiting {} seconds before next post...'.format(time_to_sleep))
 		sleep(int(time_to_sleep))
@@ -624,7 +624,7 @@ def getNewPosts(facebook_pages, pages_dict, lastUpdateRecords):
 	logger.info('Checked all pages.')
 
 	#Sorts the list of new posts in chronological order
-	new_posts_total.sort(key=lambda post: parsePostDate(post))
+	new_posts_total.sort( key=parsePostDate )
 	logger.info('Sorted posts by chronological order.')
 
 	return new_posts_total
@@ -685,8 +685,7 @@ def periodicCheck(bot, job):
 		configurations['facebook_refresh_rate'] *= 2
 		logger.error( 'Extend refresh rate to {}.'.format( configurations['facebook_refresh_rate'] ) )
 
-		"""
-		TODO: 'get_object' for every page individually, due to a bug
+		""" TODO: 'get_object' for every page individually, due to a bug
 		in the Graph API that makes some pages return an OAuthException 1,
 		which in turn doesn't allow the 'get_objects' method return a dict
 		that has only the working pages, which is the expected behavior
@@ -695,6 +694,7 @@ def periodicCheck(bot, job):
 		App Token, with the downside of having to renew it every two months.
 		"""
 		return
+
 	except Exception as err:
 		logger.error( 'Unknown Error' )
 		bot.send_message( chat_id = chat_id, text = 'Unknown Exception' )
@@ -736,7 +736,7 @@ def createCheckJob(bot):
 	elif configurations['facebook_refresh_rate'] < configurations['facebook_refresh_rate_default']:
 		configurations['facebook_refresh_rate'] = configurations['facebook_refresh_rate_default']
 
-	facebook_job = job_queue.run_once( periodicCheck, configurations['facebook_refresh_rate'], context = configurations['channel_id'] )
+	facebook_job = telegramJobQueue.run_once( periodicCheck, configurations['facebook_refresh_rate'], context = configurations['channel_id'] )
 
 	logger.info('Job created.')
 
@@ -820,20 +820,20 @@ def main():
 		startPage += 40
 		sleep(10)
 
-	facebook_job = job_queue.run_once( periodicCheck, 0, context = configurations['channel_id'] )
+	facebook_job = telegramJobQueue.run_once( periodicCheck, 0, context = configurations['channel_id'] )
 
 	#Log all errors
-	dispatcher.add_handler( CommandHandler( 'status', statusHandler ) )
-	dispatcher.add_handler( CommandHandler( 'extend', extendHandler ) )
-	dispatcher.add_handler( CommandHandler( 'start', startHandler ) )
-	dispatcher.add_handler( CommandHandler( 'reduce', reduceHandler ) )
-	dispatcher.add_handler( CommandHandler( 'reset', resetHandler ) )
-	dispatcher.add_handler( CommandHandler( 'toggle', toggleRateLimitStatus ) )
-	dispatcher.add_handler( MessageHandler( Filters.text, echoHandler ) )
-	dispatcher.add_error_handler(error)
+	telegramDispatcher.add_handler( CommandHandler( 'status', statusHandler ) )
+	telegramDispatcher.add_handler( CommandHandler( 'extend', extendHandler ) )
+	telegramDispatcher.add_handler( CommandHandler( 'start', startHandler ) )
+	telegramDispatcher.add_handler( CommandHandler( 'reduce', reduceHandler ) )
+	telegramDispatcher.add_handler( CommandHandler( 'reset', resetHandler ) )
+	telegramDispatcher.add_handler( CommandHandler( 'toggle', toggleRateLimitStatus ) )
+	telegramDispatcher.add_handler( MessageHandler( Filters.text, echoHandler ) )
+	telegramDispatcher.add_error_handler(error)
 
-	updater.start_polling()
-	updater.idle()
+	telegramUpdater.start_polling()
+	telegramUpdater.idle()
 
 
 if __name__ == '__main__':
