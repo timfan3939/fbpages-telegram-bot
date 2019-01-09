@@ -223,15 +223,16 @@ def updateLastUpdateRecordToFile():
 	return True
 
 
-def getMostRecentPostsDates(facebook_pages, filename):
+def getMostRecentPostsDates( facebook_pages ):
 	"""
-	Gets the date for the most recent post for every page loaded from the
-	configurations file. If there is a 'dates.json' file, load it. If not, fetch
-	the dates from Facebook and store them in the 'dates.json' file.
-	The .json file is used to keep track of the latest posts posted to
-	Telegram in case the bot is restarted after being down for a while.
+	Finds if the facebook_pages are in the last update record file.
+	If the last update record file does not exists, the function
+	creates an empty last update record file.
+	If any page in facebook_pages is not in the last update record
+	file, we fetch the last update time from facebook graph and store
+	it in the last update record file.
 	"""
-	logger.info('Getting most recent posts dates...')
+	logger.info( 'Checking for new added pages.' )
 
 	global last_update_records
 
@@ -253,21 +254,21 @@ def getMostRecentPostsDates(facebook_pages, filename):
 	if len( new_facebook_pages ) == 0:
 		return
 
-	last_posts = facebook_graph.get_objects(
+	# Fetch new added pages' last update time
+	last_update_times = facebook_graph.get_objects(
 			ids = new_facebook_pages,
 			fields = 'name,posts.limit(1){created_time}'
 	)
 
 	for page in new_facebook_pages:
 		try:
-			last_post = last_posts[page]['posts']['data'][0]
+			last_update_record = last_update_times[page]['posts']['data']['created_time']
 			last_update_records[page] = parsePostDate( last_post )
 			updateLastUpdateRecordToFile()
-			logger.info( 'Page {} ({}) went online.'.format( last_posts[page]['name'], page ) )
+			logger.info( 'Page {} ({}) went online.'.format( last_update_times[page]['name'], page ) )
 
 		except KeyError:
 			logger.warning( 'Page {} not found.'.format( page ) )
-
 
 
 def getDirectURLVideo(video_id):
@@ -815,7 +816,7 @@ def main():
 	startPage = 0
 	while startPage < len(facebook_pages):
 		endPage = (startPage + 40) if ( (startPage + 40) < len(facebook_pages) ) else len(facebook_pages)
-		getMostRecentPostsDates(facebook_pages[startPage:endPage], last_update_record_file)
+		getMostRecentPostsDates(facebook_pages[startPage:endPage])
 		# facebook only allow requesting 50 pages at a time
 		startPage += 40
 		sleep(10)
