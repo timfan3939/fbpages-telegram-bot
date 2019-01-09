@@ -373,7 +373,7 @@ def postVideoToChat(post, post_message, bot, chat_id):
 		if post_message:
 			logger.info( 'Send post message with Youtube Link' )
 			bot.send_message( chat_id = chat_id, text = post_message )
-	else:
+		else:
 			logger.info('Sending YouTube link...')
 			bot.send_message(
 				chat_id=chat_id,
