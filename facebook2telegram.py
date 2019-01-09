@@ -56,7 +56,6 @@ ydl = youtube_dl.YoutubeDL({'outtmpl': '%(id)s%(ext)s'})
 # ======================================================== #
 
 # ----- General Global Variables ----- #
-
 configurations = {}
 workingDirectory = None
 lastUpdateRecordFile = None
@@ -65,13 +64,11 @@ request_seq = 0
 show_usage_limit_status = False
 
 # ----- Facebook Global Variables ----- #
-
 facebook_graph = None
 facebook_pages = None
 facebook_job = None
 
 # ----- Telegram Global Variables ----- #
-
 bot = None
 updater = None
 dispatcher = None
@@ -84,31 +81,32 @@ def loadConfiguration(filename):
 	"""
 	Loads the configurations from the .ini file
 	and stores them in global variables.
-	Use example.botconfigurations.ini as an example.
+	Use example.botsettings.ini as an example.
 	"""
 
 	global configurations
 
-	# Read configuration file
 	config = configparser.SafeConfigParser()
 	config.read(filename)
 
-	# Load configurations
 	try:
-		configurations['locale'] = config.get('facebook', 'locale')
-		configurations['facebook_token'] = config.get('facebook', 'token')
-		configurations['facebook_pages'] = ast.literal_eval(config.get("facebook", "pages"))
+		# Load facebook configurations
+		configurations['locale'] = config.get( 'facebook', 'locale' )
+		configurations['facebook_token'] = config.get( 'facebook', 'token' )
+		configurations['facebook_pages'] = ast.literal_eval( config.get('facebook', 'pages' ) )
 		configurations['facebook_refresh_rate'] = 1900.0
-		configurations['facebook_refresh_rate_default'] = float(config.get('facebook', 'refreshrate'))
-		configurations['facebook_page_per_request'] = int(config.get('facebook', 'pageperrequest'))
-		configurations['allow_status'] = config.getboolean('facebook', 'status')
-		configurations['allow_photo'] = config.getboolean('facebook', 'photo')
-		configurations['allow_video'] = config.getboolean('facebook', 'video')
-		configurations['allow_link'] = config.getboolean('facebook', 'link')
-		configurations['allow_shared'] = config.getboolean('facebook', 'shared')
-		configurations['allow_message'] = config.getboolean('facebook', 'message')
-		configurations['telegram_token'] = config.get('telegram', 'token')
-		configurations['channel_id'] = config.get('telegram', 'channel')
+		configurations['facebook_refresh_rate_default'] = float( config.get( 'facebook', 'refreshrate' ) )
+		configurations['facebook_page_per_request'] = int( config.get( 'facebook', 'pageperrequest' ) )
+		configurations['allow_status'] = config.getboolean( 'facebook', 'status' )
+		configurations['allow_photo'] = config.getboolean( 'facebook', 'photo' )
+		configurations['allow_video'] = config.getboolean( 'facebook', 'video' )
+		configurations['allow_link'] = config.getboolean( 'facebook', 'link' )
+		configurations['allow_shared'] = config.getboolean( 'facebook', 'shared' )
+		configurations['allow_message'] = config.getboolean( 'facebook', 'message' )
+
+		# Load telegram configurations
+		configurations['telegram_token'] = config.get( 'telegram', 'token' )
+		configurations['channel_id'] = config.get( 'telegram', 'channel' )
 
 	except configparser.NoSectionError:
 		sys.exit('Fatal Error: Missing or invalid configurations file.')
@@ -118,26 +116,27 @@ def loadConfiguration(filename):
 		sys.exit('Fatal Error: Missing or invalid value in configurations file.')
 	except SyntaxError:
 		sys.exit('Fatal Error: Syntax error in page list.')
-	
-	
-	logger.info('Loaded configurations:')
-	logger.info('Locale: {}'.format( str(configurations['locale'] ) ) )
-	logger.info('Channel: ' + configurations['channel_id'])
-	logger.info('Refresh rate: ' + str(configurations['facebook_refresh_rate']))
-	logger.info('Allow Status: ' + str(configurations['allow_status']))
-	logger.info('Allow Photo: ' + str(configurations['allow_photo']))
-	logger.info('Allow Video: ' + str(configurations['allow_video']))
-	logger.info('Allow Link: ' + str(configurations['allow_link']))
-	logger.info('Allow Shared: ' + str(configurations['allow_shared']))
-	logger.info('Allow Message: ' + str(configurations['allow_message']))
+
+
+	logger.info( 'Loaded configurations:' )
+	logger.info( 'Locale: ' + str( configurations['locale'] ) )
+	logger.info( 'Channel: ' + configurations['channel_id'] )
+	logger.info( 'Refresh rate: ' + str( configurations['facebook_refresh_rate'] ) )
+	logger.info( 'Allow Status: ' + str( configurations['allow_status'] ) )
+	logger.info( 'Allow Photo: ' + str( configurations['allow_photo'] ) )
+	logger.info( 'Allow Video: ' + str( configurations['allow_video'] ) )
+	logger.info( 'Allow Link: ' + str( configurations['allow_link'] ) )
+	logger.info( 'Allow Shared: ' + str( configurations['allow_shared'] ) )
+	logger.info( 'Allow Message: ' + str( configurations['allow_message'] ) )
 
 
 def loadFacebookGraph(facebook_token):
 	"""
 	Initialize Facebook GraphAPI with the token loaded from the configurations file
 	"""
+
 	global facebook_graph
-	facebook_graph = facebook.GraphAPI(access_token=facebook_token, version='3.0', timeout=120)
+	facebook_graph = facebook.GraphAPI( access_token = facebook_token, version = '3.0', timeout = 120 )
 
 
 def loadTelegramBot(telegram_token):
