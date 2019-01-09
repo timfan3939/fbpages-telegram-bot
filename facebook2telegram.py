@@ -154,36 +154,36 @@ def loadTelegramBot( telegram_token ):
 	try:
 		telegram_bot = telegram.Bot(token=telegram_token)
 	except InvalidToken:
-		sys.exit('Fatal Error: Invalid Telegram Token')
+		logger.error( 'Fatal Error: Invalid Telegram Token' )
+		sys.exit( 'Fatal Error: Invalid Telegram Token' )
 
 	telegram_updater = Updater(token=telegram_token)
 	telegram_dispatcher = telegram_updater.dispatcher
 	telegram_job_queue = telegram_updater.job_queue
 
 
-def parsePostDate(post):
+def parsePostDate( post ):
 	"""
 	Converts 'created_time' str from a Facebook post to the 'datetime' format
 	"""
 	date_format = "%Y-%m-%dT%H:%M:%S+0000"
-	post_date = datetime.strptime(post['created_time'], date_format)
+	post_date = datetime.strptime( post['created_time'], date_format )
 	return post_date
 
 
-class dateTimeEncoder(json.JSONEncoder):
+class JSONDatetimeEncoder( json.JSONEncoder ):
 	"""
 	Converts the 'datetime' type to an ISO timestamp for the JSON dumper
 	"""
-	def default(self, o):
-		if isinstance(o, datetime):
+	def default( self, o ):
+		if isinstance( o, datetime ):
 			serial = o.isoformat()  #Save in ISO format
 			return serial
-
-		return super().default( o )
-
+		return json.JSONEncoder.default( self, o )
 
 
-def dateTimeDecoder(pairs, date_format="%Y-%m-%dT%H:%M:%S"):
+
+def dateTimeDecoder( pairs, date_format="%Y-%m-%dT%H:%M:%S" ):
 	"""
 	Converts the ISO timestamp to 'datetime' type for the JSON loader
 	"""
@@ -192,7 +192,7 @@ def dateTimeDecoder(pairs, date_format="%Y-%m-%dT%H:%M:%S"):
 	for k, v in pairs:
 		if isinstance(v, str):
 			try:
-				d[k] = datetime.strptime(v, date_format)
+				d[k] = datetime.strptime( v, date_format )
 			except ValueError:
 				d[k] = v
 		else:
@@ -220,7 +220,7 @@ def dumpDatesJSON(last_update_records, filename):
 	"""
 	with open(filename, 'w') as f:
 		json.dump(last_update_records, f,
-				sort_keys=True, indent=4, cls=dateTimeEncoder)
+				sort_keys=True, indent=4, cls=JSONDatetimeEncoder)
 
 	logger.info('Dumped JSON file.')
 	return True
