@@ -57,9 +57,9 @@ ydl = youtube_dl.YoutubeDL({'outtmpl': '%(id)s%(ext)s'})
 
 # ----- General Global Variables ----- #
 configurations = {}
-workingDirectory = None
-lastUpdateRecordFile = None
-lastUpdateRecords = {}
+working_directory = None
+last_update_record_file = None
+last_update_records = {}
 request_seq = 0
 show_usage_limit_status = False
 
@@ -69,15 +69,15 @@ facebook_pages = None
 facebook_job = None
 
 # ----- Telegram Global Variables ----- #
-telegramBot = None
-telegramUpdater = None
-telegramDispatcher = None
-telegramJobQueue = None
+telegram_bot = None
+telegram_updater = None
+telegram_dispatcher = None
+telegram_job_queue = None
 
 # -------------------------------------------------------- #
 
 
-def loadConfiguration(filename):
+def loadConfiguration( filename ):
 	"""
 	Loads the configurations from the .ini file
 	and stores them in global variables.
@@ -109,13 +109,17 @@ def loadConfiguration(filename):
 		configurations['channel_id'] = config.get( 'telegram', 'channel' )
 
 	except configparser.NoSectionError:
-		sys.exit('Fatal Error: Missing or invalid configurations file.')
+		logger.error( 'Fatal Error: Missing or invalid configurations file.' )
+		sys.exit( 'Fatal Error: Missing or invalid configurations file.' )
 	except configparser.NoOptionError:
-		sys.exit('Fatal Error: Missing or invalid option in configurations file.')
+		logger.error( 'Fatal Error: Missing or invalid option in configurations file.' )
+		sys.exit( 'Fatal Error: Missing or invalid option in configurations file.' )
 	except ValueError:
-		sys.exit('Fatal Error: Missing or invalid value in configurations file.')
+		logger.error( 'Fatal Error: Missing or invalid value in configurations file.' )
+		sys.exit( 'Fatal Error: Missing or invalid value in configurations file.' )
 	except SyntaxError:
-		sys.exit('Fatal Error: Syntax error in page list.')
+		logger.error( 'Fatal Error: Syntax error in page list.' )
+		sys.exit( 'Fatal Error: Syntax error in page list.' )
 
 
 	logger.info( 'Loaded configurations:' )
@@ -130,32 +134,31 @@ def loadConfiguration(filename):
 	logger.info( 'Allow Message: ' + str( configurations['allow_message'] ) )
 
 
-def loadFacebookGraph(facebook_token):
+def loadFacebookGraph( facebook_token ):
 	"""
 	Initialize Facebook GraphAPI with the token loaded from the configurations file
 	"""
-
 	global facebook_graph
 	facebook_graph = facebook.GraphAPI( access_token = facebook_token, version = '3.0', timeout = 120 )
 
 
-def loadTelegramBot(telegram_token):
+def loadTelegramBot( telegram_token ):
 	"""
 	Initialize Telegram Bot API with the token loaded from the configurations file
 	"""
-	global telegramBot
-	global telegramUpdater
-	global telegramDispatcher
-	global telegramJobQueue
+	global telegram_bot
+	global telegram_updater
+	global telegram_dispatcher
+	global telegram_job_queue
 
 	try:
-		telegramBot = telegram.Bot(token=telegram_token)
+		telegram_bot = telegram.Bot(token=telegram_token)
 	except InvalidToken:
 		sys.exit('Fatal Error: Invalid Telegram Token')
 
-	telegramUpdater = Updater(token=telegram_token)
-	telegramDispatcher = telegramUpdater.dispatcher
-	telegramJobQueue = telegramUpdater.job_queue
+	telegram_updater = Updater(token=telegram_token)
+	telegram_dispatcher = telegram_updater.dispatcher
+	telegram_job_queue = telegram_updater.job_queue
 
 
 def parsePostDate(post):
@@ -201,7 +204,7 @@ def dateTimeDecoder(pairs, date_format="%Y-%m-%dT%H:%M:%S"):
 def loadDatesJSON( filename ):
 	"""
 	Loads the .json file containing the latest post's date for every page
-	loaded from the configurations file to the 'lastUpdateRecords' dict
+	loaded from the configurations file to the 'last_update_records' dict
 	"""
 	with open( filename, 'r' ) as f:
 		loaded_json = json.load( f, object_pairs_hook = dateTimeDecoder )
@@ -210,13 +213,13 @@ def loadDatesJSON( filename ):
 	return loaded_json
 
 
-def dumpDatesJSON(lastUpdateRecords, filename):
+def dumpDatesJSON(last_update_records, filename):
 	"""
-	Dumps the 'lastUpdateRecords' dict to a .json file containing the
+	Dumps the 'last_update_records' dict to a .json file containing the
 	latest post's date for every page loaded from the configurations file.
 	"""
 	with open(filename, 'w') as f:
-		json.dump(lastUpdateRecords, f,
+		json.dump(last_update_records, f,
 				sort_keys=True, indent=4, cls=dateTimeEncoder)
 
 	logger.info('Dumped JSON file.')
@@ -233,20 +236,20 @@ def getMostRecentPostsDates(facebook_pages, filename):
 	"""
 	logger.info('Getting most recent posts dates...')
 
-	global lastUpdateRecords
+	global last_update_records
 
 	# Check if dates.json exists.  If not, create one.
 	try:
-		lastUpdateRecords = loadDatesJSON( filename )
+		last_update_records = loadDatesJSON( filename )
 	except (IOError, ValueError):
-		lastUpdateRecords = {}
-		dumpDatesJSON( lastUpdateRecords, filename )
+		last_update_records = {}
+		dumpDatesJSON( last_update_records, filename )
 
 	# Check if any new page ID is added
 	new_facebook_pages = []
 
 	for page in facebook_pages:
-		if page not in lastUpdateRecords:
+		if page not in last_update_records:
 			new_facebook_pages.append( page )
 			logger.info( 'Checking if page {} went online...'.format( page ) )
 
@@ -261,8 +264,8 @@ def getMostRecentPostsDates(facebook_pages, filename):
 	for page in new_facebook_pages:
 		try:
 			last_post = last_posts[page]['posts']['data'][0]
-			lastUpdateRecords[page] = parsePostDate( last_post )
-			dumpDatesJSON( lastUpdateRecords, filename )
+			last_update_records[page] = parsePostDate( last_post )
+			dumpDatesJSON( last_update_records, filename )
 			logger.info( 'Page {} ({}) went online.'.format( last_posts[page]['name'], page ) )
 
 		except KeyError:
@@ -322,15 +325,15 @@ def postPhotoToChat(post, post_message, bot, chat_id):
 		"""
 		try:
 			logger.info('Sending by URL failed, downloading file...')
-			request.urlretrieve(direct_link, workingDirectory+'/temp.jpg')
+			request.urlretrieve(direct_link, working_directory+'/temp.jpg')
 			logger.info('Sending file...')
-			with open(workingDirectory+'/temp.jpg', 'rb') as picture:
+			with open(working_directory+'/temp.jpg', 'rb') as picture:
 				message = bot.send_photo(
 					chat_id=chat_id,
 					photo=picture,
 					caption=post_message,
 					timeout=120)
-			remove(workingDirectory+'/temp.jpg')   #Delete the temp picture
+			remove(working_directory+'/temp.jpg')   #Delete the temp picture
 			return message
 
 		except TimedOut:
@@ -340,13 +343,13 @@ def postPhotoToChat(post, post_message, bot, chat_id):
 			"""
 			logger.warning('File upload timed out, trying again...')
 			logger.info('Sending file...')
-			with open(workingDirectory+'/temp.jpg', 'rb') as picture:
+			with open(working_directory+'/temp.jpg', 'rb') as picture:
 				message = bot.send_photo(
 					chat_id=chat_id,
 					photo=picture,
 					caption=post_message,
 					timeout=200)
-			remove(workingDirectory+'/temp.jpg')   #Delete the temp picture
+			remove(working_directory+'/temp.jpg')   #Delete the temp picture
 			return message
 
 		except BadRequest:
@@ -411,15 +414,15 @@ def postVideoToChat(post, post_message, bot, chat_id):
 					try:
 						logger.warning('Sending by URL failed, downloading file...')
 						request.urlretrieve(post['source'],
-											workingDirectory+'/temp.mp4')
+											working_directory+'/temp.mp4')
 						logger.info('Sending file...')
-						with open(workingDirectory+'/temp.mp4', 'rb') as video:
+						with open(working_directory+'/temp.mp4', 'rb') as video:
 							message = bot.send_video(
 								chat_id=chat_id,
 								video=video,
 								caption=post_message,
 								timeout=120)
-						remove(workingDirectory+'/temp.mp4')   #Delete the temp video
+						remove(working_directory+'/temp.mp4')   #Delete the temp video
 						return message
 					except NetworkError:
 						logger.warning('Could not post video, sending link...')
@@ -551,7 +554,7 @@ def postToChat(post, bot, chat_id):
 
 
 def postNewPosts(new_posts_total, chat_id):
-	global lastUpdateRecords
+	global last_update_records
 	global headerPosted
 	new_posts_total_count = len(new_posts_total)
 
@@ -565,34 +568,34 @@ def postNewPosts(new_posts_total, chat_id):
 		headerPosted = False
 
 		try:
-			postToChat(post, telegramBot, chat_id)
+			postToChat(post, telegram_bot, chat_id)
 		except BadRequest as e:
 			logger.error('Error: Telegram could not send the message')
 			logger.error('Message: {}'.format(e.message))
-			telegramBot.send_message( chat_id = chat_id, text = 'Bad Request Exception')
+			telegram_bot.send_message( chat_id = chat_id, text = 'Bad Request Exception')
 			#raise
 		except KeyError:
 			logger.error('Error: Got Key Error, ignore the post from {}'.format(post['pagename']))
 			logger.exception(' ')
-			telegramBot.send_message( chat_id = chat_id, text = 'Key Error Exception from page {}'.format(post['pagename']))
+			telegram_bot.send_message( chat_id = chat_id, text = 'Key Error Exception from page {}'.format(post['pagename']))
 			headerPosted = True
 		except Exception as e:
 			msg = 'Unknown Error: {} when processing page {}'.format( type(e), posts_page )
 			logger.error(msg)
-			telegramBot.send_message( chat_id = chat_id, text = msg )
+			telegram_bot.send_message( chat_id = chat_id, text = msg )
 		finally:
 			if headerPosted:
-				lastUpdateRecords[posts_page] = parsePostDate(post)
-				dumpDatesJSON(lastUpdateRecords, lastUpdateRecordFile)
+				last_update_records[posts_page] = parsePostDate(post)
+				dumpDatesJSON(last_update_records, last_update_record_file)
 				post_left -= 1
-			telegramBot.send_message( chat_id = chat_id, text = '{} post(s) left'.format(post_left) )
+			telegram_bot.send_message( chat_id = chat_id, text = '{} post(s) left'.format(post_left) )
 
 		logger.info('Waiting {} seconds before next post...'.format(time_to_sleep))
 		sleep(int(time_to_sleep))
 	logger.info('{} posts posted to Telegram'.format(new_posts_total_count))
 
 
-def getNewPosts(facebook_pages, pages_dict, lastUpdateRecords):
+def getNewPosts(facebook_pages, pages_dict, last_update_records):
 	#Iterate every page in the list loaded from the configurations file
 	new_posts_total = []
 	for page in facebook_pages:
@@ -605,7 +608,7 @@ def getNewPosts(facebook_pages, pages_dict, lastUpdateRecords):
 
 			#List of posts posted after "last posted date" for current page
 			new_posts = list(filter(
-				lambda post: parsePostDate(post) > lastUpdateRecords[page],
+				lambda post: parsePostDate(post) > last_update_records[page],
 				posts_data))
 
 			if not new_posts:
@@ -655,7 +658,7 @@ def periodicCheck(bot, job):
 	updateRequestList()
 	createCheckJob( bot )
 
-	global lastUpdateRecords
+	global last_update_records
 	chat_id = job.context
 	logger.info('Accessing Facebook...')
 
@@ -701,7 +704,7 @@ def periodicCheck(bot, job):
 		bot.send_message( chat_id = chat_id, text = str( err )  )
 		return
 
-	new_posts_total = getNewPosts(facebook_pages, pages_dict, lastUpdateRecords)
+	new_posts_total = getNewPosts(facebook_pages, pages_dict, last_update_records)
 
 	logger.info('Checked all posts. Next check in '
 			+ str(configurations['facebook_refresh_rate'])
@@ -736,7 +739,7 @@ def createCheckJob(bot):
 	elif configurations['facebook_refresh_rate'] < configurations['facebook_refresh_rate_default']:
 		configurations['facebook_refresh_rate'] = configurations['facebook_refresh_rate_default']
 
-	facebook_job = telegramJobQueue.run_once( periodicCheck, configurations['facebook_refresh_rate'], context = configurations['channel_id'] )
+	facebook_job = telegram_job_queue.run_once( periodicCheck, configurations['facebook_refresh_rate'], context = configurations['channel_id'] )
 
 	logger.info('Job created.')
 
@@ -798,14 +801,14 @@ def getRateLimitStatus():
 
 def main():
 	global facebook_pages
-	global workingDirectory
-	global lastUpdateRecordFile
+	global working_directory
+	global last_update_record_file
 	global facebook_job
 
-	workingDirectory = path.dirname(path.realpath(__file__))
-	lastUpdateRecordFile = workingDirectory + '/dates.json'
+	working_directory = path.dirname(path.realpath(__file__))
+	last_update_record_file = working_directory + '/dates.json'
 
-	loadConfiguration( workingDirectory + '/botsettings.ini' )
+	loadConfiguration( working_directory + '/botsettings.ini' )
 	loadFacebookGraph(configurations['facebook_token'])
 	loadTelegramBot(configurations['telegram_token'])
 	facebook_pages = configurations['facebook_pages']
@@ -815,25 +818,25 @@ def main():
 	startPage = 0
 	while startPage < len(facebook_pages):
 		endPage = (startPage + 40) if ( (startPage + 40) < len(facebook_pages) ) else len(facebook_pages)
-		getMostRecentPostsDates(facebook_pages[startPage:endPage], lastUpdateRecordFile)
+		getMostRecentPostsDates(facebook_pages[startPage:endPage], last_update_record_file)
 		# facebook only allow requesting 50 pages at a time
 		startPage += 40
 		sleep(10)
 
-	facebook_job = telegramJobQueue.run_once( periodicCheck, 0, context = configurations['channel_id'] )
+	facebook_job = telegram_job_queue.run_once( periodicCheck, 0, context = configurations['channel_id'] )
 
 	#Log all errors
-	telegramDispatcher.add_handler( CommandHandler( 'status', statusHandler ) )
-	telegramDispatcher.add_handler( CommandHandler( 'extend', extendHandler ) )
-	telegramDispatcher.add_handler( CommandHandler( 'start', startHandler ) )
-	telegramDispatcher.add_handler( CommandHandler( 'reduce', reduceHandler ) )
-	telegramDispatcher.add_handler( CommandHandler( 'reset', resetHandler ) )
-	telegramDispatcher.add_handler( CommandHandler( 'toggle', toggleRateLimitStatus ) )
-	telegramDispatcher.add_handler( MessageHandler( Filters.text, echoHandler ) )
-	telegramDispatcher.add_error_handler(error)
+	telegram_dispatcher.add_handler( CommandHandler( 'status', statusHandler ) )
+	telegram_dispatcher.add_handler( CommandHandler( 'extend', extendHandler ) )
+	telegram_dispatcher.add_handler( CommandHandler( 'start', startHandler ) )
+	telegram_dispatcher.add_handler( CommandHandler( 'reduce', reduceHandler ) )
+	telegram_dispatcher.add_handler( CommandHandler( 'reset', resetHandler ) )
+	telegram_dispatcher.add_handler( CommandHandler( 'toggle', toggleRateLimitStatus ) )
+	telegram_dispatcher.add_handler( MessageHandler( Filters.text, echoHandler ) )
+	telegram_dispatcher.add_error_handler(error)
 
-	telegramUpdater.start_polling()
-	telegramUpdater.idle()
+	telegram_updater.start_polling()
+	telegram_updater.idle()
 
 
 if __name__ == '__main__':
