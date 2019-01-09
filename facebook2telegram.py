@@ -56,7 +56,6 @@ ydl = youtube_dl.YoutubeDL({'outtmpl': '%(id)s%(ext)s'})
 # ======================================================== #
 
 # ----- General Global Variables ----- #
-
 configurations = {}
 workingDirectory = None
 lastUpdateRecordFile = None
@@ -65,13 +64,11 @@ request_seq = 0
 show_usage_limit_status = False
 
 # ----- Facebook Global Variables ----- #
-
 facebook_graph = None
 facebook_pages = None
 facebook_job = None
 
 # ----- Telegram Global Variables ----- #
-
 bot = None
 updater = None
 dispatcher = None
@@ -118,8 +115,8 @@ def loadConfiguration(filename):
 		sys.exit('Fatal Error: Missing or invalid value in configurations file.')
 	except SyntaxError:
 		sys.exit('Fatal Error: Syntax error in page list.')
-	
-	
+
+
 	logger.info('Loaded configurations:')
 	logger.info('Locale: {}'.format( str(configurations['locale'] ) ) )
 	logger.info('Channel: ' + configurations['channel_id'])
