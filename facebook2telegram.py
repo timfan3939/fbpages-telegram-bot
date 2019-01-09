@@ -624,7 +624,7 @@ def getNewPosts(facebook_pages, pages_dict, lastUpdateRecords):
 	logger.info('Checked all pages.')
 
 	#Sorts the list of new posts in chronological order
-	new_posts_total.sort(key=lambda post: parsePostDate(post))
+	new_posts_total.sort( key=parsePostDate )
 	logger.info('Sorted posts by chronological order.')
 
 	return new_posts_total
@@ -685,8 +685,7 @@ def periodicCheck(bot, job):
 		configurations['facebook_refresh_rate'] *= 2
 		logger.error( 'Extend refresh rate to {}.'.format( configurations['facebook_refresh_rate'] ) )
 
-		"""
-		TODO: 'get_object' for every page individually, due to a bug
+		""" TODO: 'get_object' for every page individually, due to a bug
 		in the Graph API that makes some pages return an OAuthException 1,
 		which in turn doesn't allow the 'get_objects' method return a dict
 		that has only the working pages, which is the expected behavior
@@ -695,6 +694,7 @@ def periodicCheck(bot, job):
 		App Token, with the downside of having to renew it every two months.
 		"""
 		return
+
 	except Exception as err:
 		logger.error( 'Unknown Error' )
 		bot.send_message( chat_id = chat_id, text = 'Unknown Exception' )
