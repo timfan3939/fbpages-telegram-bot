@@ -223,7 +223,7 @@ def updateLastUpdateRecordToFile():
 	return True
 
 
-def getMostRecentPostsDates( facebook_pages ):
+def getMostRecentPostDates( facebook_pages ):
 	"""
 	Finds if the facebook_pages are in the last update record file.
 	If the last update record file does not exists, the function
@@ -816,7 +816,7 @@ def main():
 	startPage = 0
 	while startPage < len(facebook_pages):
 		endPage = (startPage + 40) if ( (startPage + 40) < len(facebook_pages) ) else len(facebook_pages)
-		getMostRecentPostsDates(facebook_pages[startPage:endPage])
+		getMostRecentPostDates(facebook_pages[startPage:endPage])
 		# facebook only allow requesting 50 pages at a time
 		startPage += 40
 		sleep(10)
