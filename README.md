@@ -1,6 +1,6 @@
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/dac402e882c64ae3891049f2e87caa6a)](https://www.codacy.com/app/timfan3939/fbpages-telegram-bot?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=timfan3939/fbpages-telegram-bot&amp;utm_campaign=Badge_Grade)
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/s1cp/FacebookPages2Telegram/master/LICENSE)
-[![Python Versions](https://img.shields.io/badge/python-3.4%2C%203.5%2C%203.6-blue.svg)](https://docs.python.org/3/)
+[![Python Versions](https://img.shields.io/badge/python-3.6-blue.svg)](https://docs.python.org/3/)
 [![Contact me on Telegram](https://img.shields.io/badge/Contact-Telegram-blue.svg)](https://t.me/s1cp0)
 
 # fbpages-telegram-bot
