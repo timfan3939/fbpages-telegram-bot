@@ -151,7 +151,7 @@ def loadTelegramBot(telegram_token):
 	try:
 		telegramBot = telegram.Bot(token=telegram_token)
 	except InvalidToken:
-	   sys.exit('Fatal Error: Invalid Telegram Token')
+		sys.exit('Fatal Error: Invalid Telegram Token')
 
 	telegramUpdater = Updater(token=telegram_token)
 	telegramDispatcher = telegramUpdater.dispatcher
@@ -217,7 +217,7 @@ def dumpDatesJSON(lastUpdateRecords, filename):
 	"""
 	with open(filename, 'w') as f:
 		json.dump(lastUpdateRecords, f,
-				  sort_keys=True, indent=4, cls=dateTimeEncoder)
+				sort_keys=True, indent=4, cls=dateTimeEncoder)
 
 	logger.info('Dumped JSON file.')
 	return True
@@ -370,14 +370,14 @@ def postVideoToChat(post, post_message, bot, chat_id):
 	"""
 	#If youtube link, post the link and short text if exists
 	if 'caption' in post and post['caption'] == 'youtube.com':
-	  if post_message:
-		  logger.info( 'Send post message with Youtube Link' )
-		  bot.send_message( chat_id = chat_id, text = post_message )
-	  else:
-		  logger.info('Sending YouTube link...')
-		  bot.send_message(
-			  chat_id=chat_id,
-			  text=post['link'])
+		if post_message:
+			logger.info( 'Send post message with Youtube Link' )
+			bot.send_message( chat_id = chat_id, text = post_message )
+	else:
+			logger.info('Sending YouTube link...')
+			bot.send_message(
+				chat_id=chat_id,
+				text=post['link'])
 	else:
 		if 'object_id' in post:
 			direct_link = getDirectURLVideo(post['object_id'])
@@ -704,8 +704,8 @@ def periodicCheck(bot, job):
 	new_posts_total = getNewPosts(facebook_pages, pages_dict, lastUpdateRecords)
 
 	logger.info('Checked all posts. Next check in '
-		  +str(configurations['facebook_refresh_rate'])
-		  +' seconds.')
+			+ str(configurations['facebook_refresh_rate'])
+			+ ' seconds.')
 
 	postNewPosts(new_posts_total, chat_id)
 
