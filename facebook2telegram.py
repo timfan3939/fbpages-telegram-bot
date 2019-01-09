@@ -201,28 +201,25 @@ def dateTimeDecoder( pairs, date_format="%Y-%m-%dT%H:%M:%S" ):
 	return d
 
 
-def loadDatesJSON( filename ):
+def loadLastUpdateRecordFromFile():
 	"""
-	Loads the .json file containing the latest post's date for every page
-	loaded from the configurations file to the 'last_update_records' dict
+	Load and return the last update records from the given filename.
 	"""
-	with open( filename, 'r' ) as f:
+	with open( last_update_record_file, 'r' ) as f:
 		loaded_json = json.load( f, object_pairs_hook = dateTimeDecoder )
 
-	logger.info( 'Loaded JSON file.' )
+	logger.info( 'Load last update records successfully.' )
 	return loaded_json
 
 
-def dumpDatesJSON(last_update_records, filename):
+def updateLastUpdateRecordToFile():
 	"""
-	Dumps the 'last_update_records' dict to a .json file containing the
-	latest post's date for every page loaded from the configurations file.
+	Update the last update recores to the given filename.
 	"""
-	with open(filename, 'w') as f:
-		json.dump(last_update_records, f,
-				sort_keys=True, indent=4, cls=JSONDatetimeEncoder)
+	with open( last_update_record_file, 'w' ) as f:
+		json.dump( last_update_records, f, sort_keys=True, cls=JSONDatetimeEncoder)
 
-	logger.info('Dumped JSON file.')
+	logger.info( 'Update last update records successfully.' )
 	return True
 
 
@@ -240,10 +237,10 @@ def getMostRecentPostsDates(facebook_pages, filename):
 
 	# Check if dates.json exists.  If not, create one.
 	try:
-		last_update_records = loadDatesJSON( filename )
+		last_update_records = loadLastUpdateRecordFromFile()
 	except (IOError, ValueError):
 		last_update_records = {}
-		dumpDatesJSON( last_update_records, filename )
+		updateLastUpdateRecordToFile()
 
 	# Check if any new page ID is added
 	new_facebook_pages = []
@@ -265,7 +262,7 @@ def getMostRecentPostsDates(facebook_pages, filename):
 		try:
 			last_post = last_posts[page]['posts']['data'][0]
 			last_update_records[page] = parsePostDate( last_post )
-			dumpDatesJSON( last_update_records, filename )
+			updateLastUpdateRecordToFile()
 			logger.info( 'Page {} ({}) went online.'.format( last_posts[page]['name'], page ) )
 
 		except KeyError:
@@ -586,7 +583,7 @@ def postNewPosts(new_posts_total, chat_id):
 		finally:
 			if headerPosted:
 				last_update_records[posts_page] = parsePostDate(post)
-				dumpDatesJSON(last_update_records, last_update_record_file)
+				updateLastUpdateRecordToFile()
 				post_left -= 1
 			telegram_bot.send_message( chat_id = chat_id, text = '{} post(s) left'.format(post_left) )
 
