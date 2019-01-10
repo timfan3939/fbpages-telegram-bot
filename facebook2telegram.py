@@ -214,10 +214,14 @@ def loadLastUpdateRecordFromFile():
 
 def updateLastUpdateRecordToFile():
 	"""
-	Update the last update recores to the given filename.
+	Update the last update records to the specific file.
 	"""
 	with open( last_update_record_file, 'w' ) as f:
-		json.dump( last_update_records, f, sort_keys=True, cls=JSONDatetimeEncoder)
+		json.dump( obj = last_update_records,
+					fp = f,
+					sort_keys = True,
+					cls = JSONDatetimeEncoder,
+					indent = '\t' )
 
 	logger.info( 'Update last update records successfully.' )
 	return True
