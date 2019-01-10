@@ -60,13 +60,13 @@ configurations = {}
 working_directory = None
 last_update_record_file = None
 last_update_records = {}
-request_seq = 0
 show_usage_limit_status = False
 
 # ----- Facebook Global Variables ----- #
 facebook_graph = None
 facebook_pages = None
 facebook_job = None
+facebook_pages_request_index = 0
 
 # ----- Telegram Global Variables ----- #
 telegram_bot = None
@@ -634,20 +634,25 @@ def getNewPosts(facebook_pages, pages_dict, last_update_records):
 
 	return new_posts_total
 
-def updateRequestList():
-	global request_seq
+
+def updateFacebookPageListForRequest():
+	"""
+	Rotate the facebook pages for the next request.
+	"""
+	global facebook_pages_request_index
 	global facebook_pages
 
 	facebook_page_list = configurations['facebook_pages']
 
-	request_size = configurations['facebook_page_per_request']
-	request_end = (request_seq + request_size) % len(facebook_page_list)
+	facebook_pages_request_size = configurations['facebook_page_per_request']
+	facebook_pages_request_end = ( facebook_pages_request_index + facebook_pages_request_size ) % len( facebook_page_list )
 
 	facebook_pages = []
-	while request_seq != request_end:
-		facebook_pages.append( facebook_page_list[ request_seq ] )
-		logger.info('{}: {}'.format(request_seq, facebook_page_list[ request_seq ] ) )
-		request_seq = (request_seq + 1) % len(facebook_page_list)
+	while facebook_pages_request_index != facebook_pages_request_end:
+		facebook_pages.append( facebook_page_list[ facebook_pages_request_index ] )
+		logger.info( '{}: {}'.format( facebook_pages_request_index, facebook_page_list[facebook_pages_request_index] ) )
+		facebook_pages_request_index = ( facebook_pages_request_index + 1 ) % len( facebook_page_list )
+
 
 def periodicCheck(bot, job):
 	"""
@@ -657,7 +662,7 @@ def periodicCheck(bot, job):
 	page.
 	"""
 
-	updateRequestList()
+	updateFacebookPageListForRequest()
 	createCheckJob( bot )
 
 	global last_update_records
