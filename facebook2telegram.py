@@ -60,13 +60,13 @@ configurations = {}
 working_directory = None
 last_update_record_file = None
 last_update_records = {}
-request_seq = 0
 show_usage_limit_status = False
 
 # ----- Facebook Global Variables ----- #
 facebook_graph = None
 facebook_pages = None
 facebook_job = None
+facebook_pages_request_index = 0
 
 # ----- Telegram Global Variables ----- #
 telegram_bot = None
@@ -162,9 +162,9 @@ def loadTelegramBot( telegram_token ):
 	telegram_job_queue = telegram_updater.job_queue
 
 
-def parsePostDate( post ):
+def parsePostCreatedTime( post ):
 	"""
-	Converts 'created_time' str from a Facebook post to the 'datetime' format
+	Get the post's created time from the given post's object.
 	"""
 	date_format = "%Y-%m-%dT%H:%M:%S+0000"
 	post_date = datetime.strptime( post['created_time'], date_format )
@@ -175,11 +175,11 @@ class JSONDatetimeEncoder( json.JSONEncoder ):
 	"""
 	Converts the 'datetime' type to an ISO timestamp for the JSON dumper
 	"""
-	def default( self, o ):
-		if isinstance( o, datetime ):
-			serial = o.isoformat()  #Save in ISO format
+	def default( self, obj ):
+		if isinstance( obj, datetime ):
+			serial = obj.isoformat()  #Save in ISO format
 			return serial
-		return json.JSONEncoder.default( self, o )
+		return json.JSONEncoder.default( self, obj )
 
 
 
@@ -214,16 +214,20 @@ def loadLastUpdateRecordFromFile():
 
 def updateLastUpdateRecordToFile():
 	"""
-	Update the last update recores to the given filename.
+	Update the last update records to the specific file.
 	"""
 	with open( last_update_record_file, 'w' ) as f:
-		json.dump( last_update_records, f, sort_keys=True, cls=JSONDatetimeEncoder)
+		json.dump( obj = last_update_records,
+					fp = f,
+					sort_keys = True,
+					cls = JSONDatetimeEncoder,
+					indent = '\t' )
 
 	logger.info( 'Update last update records successfully.' )
 	return True
 
 
-def getMostRecentPostsDates( facebook_pages ):
+def getMostRecentPostDates( facebook_pages ):
 	"""
 	Finds if the facebook_pages are in the last update record file.
 	If the last update record file does not exists, the function
@@ -262,8 +266,8 @@ def getMostRecentPostsDates( facebook_pages ):
 
 	for page in new_facebook_pages:
 		try:
-			last_update_record = last_update_times[page]['posts']['data']['created_time']
-			last_update_records[page] = parsePostDate( last_post )
+			last_update_record = last_update_times[page]['posts']['data'][0]
+			last_update_records[page] = parsePostCreatedTime( last_update_record )
 			updateLastUpdateRecordToFile()
 			logger.info( 'Page {} ({}) went online.'.format( last_update_times[page]['name'], page ) )
 
@@ -583,7 +587,7 @@ def postNewPosts(new_posts_total, chat_id):
 			telegram_bot.send_message( chat_id = chat_id, text = msg )
 		finally:
 			if headerPosted:
-				last_update_records[posts_page] = parsePostDate(post)
+				last_update_records[posts_page] = parsePostCreatedTime(post)
 				updateLastUpdateRecordToFile()
 				post_left -= 1
 			telegram_bot.send_message( chat_id = chat_id, text = '{} post(s) left'.format(post_left) )
@@ -606,7 +610,7 @@ def getNewPosts(facebook_pages, pages_dict, last_update_records):
 
 			#List of posts posted after "last posted date" for current page
 			new_posts = list(filter(
-				lambda post: parsePostDate(post) > last_update_records[page],
+				lambda post: parsePostCreatedTime(post) > last_update_records[page],
 				posts_data))
 
 			if not new_posts:
@@ -625,25 +629,30 @@ def getNewPosts(facebook_pages, pages_dict, last_update_records):
 	logger.info('Checked all pages.')
 
 	#Sorts the list of new posts in chronological order
-	new_posts_total.sort( key=parsePostDate )
+	new_posts_total.sort( key=parsePostCreatedTime )
 	logger.info('Sorted posts by chronological order.')
 
 	return new_posts_total
 
-def updateRequestList():
-	global request_seq
+
+def updateFacebookPageListForRequest():
+	"""
+	Rotate the facebook pages for the next request.
+	"""
+	global facebook_pages_request_index
 	global facebook_pages
 
 	facebook_page_list = configurations['facebook_pages']
 
-	request_size = configurations['facebook_page_per_request']
-	request_end = (request_seq + request_size) % len(facebook_page_list)
+	facebook_pages_request_size = configurations['facebook_page_per_request']
+	facebook_pages_request_end = ( facebook_pages_request_index + facebook_pages_request_size ) % len( facebook_page_list )
 
 	facebook_pages = []
-	while request_seq != request_end:
-		facebook_pages.append( facebook_page_list[ request_seq ] )
-		logger.info('{}: {}'.format(request_seq, facebook_page_list[ request_seq ] ) )
-		request_seq = (request_seq + 1) % len(facebook_page_list)
+	while facebook_pages_request_index != facebook_pages_request_end:
+		facebook_pages.append( facebook_page_list[ facebook_pages_request_index ] )
+		logger.info( '{}: {}'.format( facebook_pages_request_index, facebook_page_list[facebook_pages_request_index] ) )
+		facebook_pages_request_index = ( facebook_pages_request_index + 1 ) % len( facebook_page_list )
+
 
 def periodicCheck(bot, job):
 	"""
@@ -653,7 +662,7 @@ def periodicCheck(bot, job):
 	page.
 	"""
 
-	updateRequestList()
+	updateFacebookPageListForRequest()
 	createCheckJob( bot )
 
 	global last_update_records
@@ -816,7 +825,7 @@ def main():
 	startPage = 0
 	while startPage < len(facebook_pages):
 		endPage = (startPage + 40) if ( (startPage + 40) < len(facebook_pages) ) else len(facebook_pages)
-		getMostRecentPostsDates(facebook_pages[startPage:endPage])
+		getMostRecentPostDates(facebook_pages[startPage:endPage])
 		# facebook only allow requesting 50 pages at a time
 		startPage += 40
 		sleep(10)
