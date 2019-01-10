@@ -262,8 +262,8 @@ def getMostRecentPostDates( facebook_pages ):
 
 	for page in new_facebook_pages:
 		try:
-			last_update_record = last_update_times[page]['posts']['data']['created_time']
-			last_update_records[page] = parsePostDate( last_post )
+			last_update_record = last_update_times[page]['posts']['data'][0]
+			last_update_records[page] = parsePostDate( last_update_record )
 			updateLastUpdateRecordToFile()
 			logger.info( 'Page {} ({}) went online.'.format( last_update_times[page]['name'], page ) )
 
