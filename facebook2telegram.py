@@ -175,11 +175,11 @@ class JSONDatetimeEncoder( json.JSONEncoder ):
 	"""
 	Converts the 'datetime' type to an ISO timestamp for the JSON dumper
 	"""
-	def default( self, o ):
-		if isinstance( o, datetime ):
-			serial = o.isoformat()  #Save in ISO format
+	def default( self, obj ):
+		if isinstance( obj, datetime ):
+			serial = obj.isoformat()  #Save in ISO format
 			return serial
-		return json.JSONEncoder.default( self, o )
+		return json.JSONEncoder.default( self, obj )
 
 
 
