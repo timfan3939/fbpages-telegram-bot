@@ -162,9 +162,9 @@ def loadTelegramBot( telegram_token ):
 	telegram_job_queue = telegram_updater.job_queue
 
 
-def parsePostDate( post ):
+def parsePostCreatedTime( post ):
 	"""
-	Converts 'created_time' str from a Facebook post to the 'datetime' format
+	Get the post's created time from the given post's object.
 	"""
 	date_format = "%Y-%m-%dT%H:%M:%S+0000"
 	post_date = datetime.strptime( post['created_time'], date_format )
@@ -263,7 +263,7 @@ def getMostRecentPostDates( facebook_pages ):
 	for page in new_facebook_pages:
 		try:
 			last_update_record = last_update_times[page]['posts']['data'][0]
-			last_update_records[page] = parsePostDate( last_update_record )
+			last_update_records[page] = parsePostCreatedTime( last_update_record )
 			updateLastUpdateRecordToFile()
 			logger.info( 'Page {} ({}) went online.'.format( last_update_times[page]['name'], page ) )
 
@@ -583,7 +583,7 @@ def postNewPosts(new_posts_total, chat_id):
 			telegram_bot.send_message( chat_id = chat_id, text = msg )
 		finally:
 			if headerPosted:
-				last_update_records[posts_page] = parsePostDate(post)
+				last_update_records[posts_page] = parsePostCreatedTime(post)
 				updateLastUpdateRecordToFile()
 				post_left -= 1
 			telegram_bot.send_message( chat_id = chat_id, text = '{} post(s) left'.format(post_left) )
@@ -606,7 +606,7 @@ def getNewPosts(facebook_pages, pages_dict, last_update_records):
 
 			#List of posts posted after "last posted date" for current page
 			new_posts = list(filter(
-				lambda post: parsePostDate(post) > last_update_records[page],
+				lambda post: parsePostCreatedTime(post) > last_update_records[page],
 				posts_data))
 
 			if not new_posts:
@@ -625,7 +625,7 @@ def getNewPosts(facebook_pages, pages_dict, last_update_records):
 	logger.info('Checked all pages.')
 
 	#Sorts the list of new posts in chronological order
-	new_posts_total.sort( key=parsePostDate )
+	new_posts_total.sort( key=parsePostCreatedTime )
 	logger.info('Sorted posts by chronological order.')
 
 	return new_posts_total
