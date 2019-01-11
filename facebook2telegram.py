@@ -177,8 +177,8 @@ class JSONDatetimeEncoder( json.JSONEncoder ):
 	"""
 	def default( self, obj ):
 		if isinstance( obj, datetime ):
-			serial = obj.isoformat()  #Save in ISO format
-			return serial
+			return obj.isoformat()
+		
 		return json.JSONEncoder.default( self, obj )
 
 
