@@ -663,7 +663,7 @@ def periodicCheck(bot, job):
 	"""
 
 	updateFacebookPageListForRequest()
-	createCheckJob( bot )
+	createNextFacebookJob( bot )
 
 	global last_update_records
 	chat_id = job.context
@@ -733,22 +733,27 @@ def periodicCheck(bot, job):
 		)
 		bot.send_message( chat_id = chat_id, text = msg )
 
-def createCheckJob(bot):
-	"""
-	Creates a job that periodically calls the 'periodicCheck' function
+def createNextFacebookJob( bot ):
+	"""Create and schedule the next job for pulling the up-to-date posts
+	of the pages from the facebook.  We adjust the scheduling time to
+	prevent the bot makes too many request within a short period.
 	"""
 	global facebook_job
 
 	configurations['facebook_refresh_rate'] -= 230.0
 
-	if configurations['facebook_refresh_rate'] > 3600:
-		configurations['facebook_refresh_rate'] = 3600
-	elif configurations['facebook_refresh_rate'] < configurations['facebook_refresh_rate_default']:
-		configurations['facebook_refresh_rate'] = configurations['facebook_refresh_rate_default']
+	# The refresh rate should between the minimal value and 3600.
+	# Facebook calculates the business with 1-hour time window.
+	configurations['facebook_refresh_rate'] = min( configurations['facebook_refresh_rate'], 3600.0 )
+	configurations['facebook_refresh_rate'] = max( \
+			configurations['facebook_refresh_rate'], \
+			configurations['facebook_refresh_rate_default'] )
 
-	facebook_job = telegram_job_queue.run_once( periodicCheck, configurations['facebook_refresh_rate'], context = configurations['channel_id'] )
-
-	logger.info('Job created.')
+	facebook_job = telegram_job_queue.run_once( \
+						periodicCheck, \
+						configurations['facebook_refresh_rate'], \
+						context = configurations['channel_id'] )
+	logger.info( 'The next checking job will be in {} seconds'.format( configurations['facebook_refresh_rate'] ) )
 
 
 def error(bot, update, error):
@@ -838,6 +843,7 @@ def main():
 		startPage += 40
 		sleep(10)
 
+	# Execute the job as soon as possible.
 	facebook_job = telegram_job_queue.run_once( periodicCheck, 0, context = configurations['channel_id'] )
 
 	#Log all errors
