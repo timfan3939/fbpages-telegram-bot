@@ -669,16 +669,28 @@ def periodicPullFromFacebook(bot, job):
 	chat_id = job.context
 	logger.info('Accessing Facebook...')
 
+	page_field = [	'name', 'posts' ]
+	post_field = [	'created_time',
+					'type',
+					'message',
+					'full_picture',
+					'story',
+					'source',
+					'link',
+					'caption',
+					'parent_id',
+					'object_id',
+					'permalink_url' ]
+	request_field = ','.join( page_field ) \
+					+ '{}{}{}'.format( '{', ','.join( post_field ), '}' )
+	logger.info( 'requesting field: {}'.format( request_field ) )
+
 	try:
 		#Request to the GraphAPI with all the pages (list) and required fields
-		pages_dict = facebook_graph.get_objects( \
-			ids=facebook_pages,
-			fields='name,\
-					posts{\
-						  created_time,type,message,full_picture,story,\
-						  source,link,caption,parent_id,object_id,permalink_url}',
-			locale=configurations['locale'])
-
+		facebook_fetch_result = facebook_graph.get_objects( \
+			ids=facebook_pages, \
+			fields = request_field, \
+			locale=configurations['locale'] )
 		logger.info('Successfully fetched Facebook posts.')
 
 	except facebook.GraphAPIError as err:
@@ -706,8 +718,8 @@ def periodicPullFromFacebook(bot, job):
 
 	logger.info( 'Fetching from facebook completes.  The next pulling job should happens in {} seconds.'.format( configurations['facebook_refresh_rate'] ) )
 
-	new_posts_total = getNewPosts( facebook_pages, pages_dict, last_update_records )
-	postNewPosts( new_posts_total, chat_id )
+	new_posts_list = getNewPosts( facebook_pages, facebook_fetch_result, last_update_records )
+	postNewPosts( new_posts_list, chat_id )
 
 	# By switching the show_usage_limit_status can tell you the business
 	# of your facebook token
