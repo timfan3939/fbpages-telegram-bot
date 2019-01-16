@@ -824,7 +824,7 @@ def main():
 	# Test if new page added
 	startPage = 0
 	while startPage < len(facebook_pages):
-		endPage = (startPage + 40) if ( (startPage + 40) < len(facebook_pages) ) else len(facebook_pages)
+		endPage = min( (startPage + 40), len(facebook_pages) )
 		getMostRecentPostDates(facebook_pages[startPage:endPage])
 		# facebook only allow requesting 50 pages at a time
 		startPage += 40
