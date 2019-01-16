@@ -754,6 +754,10 @@ def createCheckJob(bot):
 def error(bot, update, error):
 	logger.warn('Update "{}" caused error "{}"'.format(update, error))
 
+# ======================================================== #
+
+# ----- Handlers ----- #
+
 def statusHandler( bot, update ):
 	rateLimitStatus = getRateLimitStatus()
 	msg = 'Refresh Rate: {:.2f} minutes\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format(
@@ -798,13 +802,17 @@ def echoHandler( bot, update ):
 	bot.send_message( chat_id = update.message.chat_id, text = 'Echo: {}'.format( update.message.text ) )
 
 def getRateLimitStatus():
+	"""Get the current facebook Rait Limit"""
+
 	url = 'https://graph.facebook.com/v3.0/me'
 	args = { 'access_token': configurations['facebook_token'] }
 	respond = requests.get( url, params = args )
 
-	rateLimitStatus = json.loads( respond.headers['x-app-usage'] )
-	return rateLimitStatus
+	return json.loads( respond.headers['x-app-usage'] )
 
+# ======================================================== #
+
+# ----- The main function #
 
 def main():
 	global facebook_pages
