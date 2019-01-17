@@ -177,8 +177,8 @@ class JSONDatetimeEncoder( json.JSONEncoder ):
 	"""
 	def default( self, obj ):
 		if isinstance( obj, datetime ):
-			serial = obj.isoformat()  #Save in ISO format
-			return serial
+			return obj.isoformat()
+		
 		return json.JSONEncoder.default( self, obj )
 
 
@@ -654,105 +654,112 @@ def updateFacebookPageListForRequest():
 		facebook_pages_request_index = ( facebook_pages_request_index + 1 ) % len( facebook_page_list )
 
 
-def periodicCheck(bot, job):
+def periodicPullFromFacebook(bot, job):
 	"""
 	Checks for new posts for every page in the list loaded from the
 	configurations file, posts them, and updates the dates.json file, which
 	contains the date for the latest post posted to Telegram for every
 	page.
 	"""
+	global last_update_records
 
 	updateFacebookPageListForRequest()
-	createCheckJob( bot )
+	createNextFacebookJob( bot )
 
-	global last_update_records
 	chat_id = job.context
 	logger.info('Accessing Facebook...')
 
+	page_field = [	'name', 'posts' ]
+	post_field = [	'created_time',
+					'type',
+					'message',
+					'full_picture',
+					'story',
+					'source',
+					'link',
+					'caption',
+					'parent_id',
+					'object_id',
+					'permalink_url' ]
+	request_field = ','.join( page_field ) \
+					+ '{}{}{}'.format( '{', ','.join( post_field ), '}' )
+	logger.info( 'requesting field: {}'.format( request_field ) )
+
 	try:
 		#Request to the GraphAPI with all the pages (list) and required fields
-		pages_dict = facebook_graph.get_objects(
-			ids=facebook_pages,
-			fields='name,\
-					posts{\
-						  created_time,type,message,full_picture,story,\
-						  source,link,caption,parent_id,object_id,permalink_url}',
-			locale=configurations['locale'])
-
+		facebook_fetch_result = facebook_graph.get_objects( \
+			ids=facebook_pages, \
+			fields = request_field, \
+			locale=configurations['locale'] )
 		logger.info('Successfully fetched Facebook posts.')
 
-	#Error in the Facebook API
 	except facebook.GraphAPIError as err:
-		logger.error('Could not get Facebook posts.')
-		logger.error('Message: {}'.format(err.message))
-		logger.error('Type: {}'.format(err.type))
-		logger.error('Code: {}'.format(err.code))
-		logger.error('Result: {}'.format(err.result))
+		logger.error( 'Could not get Facebook posts.' )
+		logger.error( 'Message: {}'.format( err.message ) )
+		logger.error( 'Type: {}'.format( err.type ) )
+		logger.error( 'Code: {}'.format( err.code ) )
+		logger.error( 'Result: {}'.format( err.result ) )
+		
+		# Send a message of error to the channel
 		msg = 'Could not get facebook posts.\nMessage: {}\nType: {}\nCode: {}\nResult:{}'.format(err.message, err.type, err.code, err.result)
 		bot.send_message( chat_id = chat_id, text=msg )
 
-		# Extends the refresh rate
+		# Extends the refresh rate no matter what the error is.
 		configurations['facebook_refresh_rate'] *= 2
 		logger.error( 'Extend refresh rate to {}.'.format( configurations['facebook_refresh_rate'] ) )
-
-		""" TODO: 'get_object' for every page individually, due to a bug
-		in the Graph API that makes some pages return an OAuthException 1,
-		which in turn doesn't allow the 'get_objects' method return a dict
-		that has only the working pages, which is the expected behavior
-		when one or more pages in 'facbeook_pages' are offline. One possible
-		workaround is to create an Extended Page Access Token instad of an
-		App Token, with the downside of having to renew it every two months.
-		"""
 		return
 
 	except Exception as err:
+		# In case there are errors other than facebook's error
 		logger.error( 'Unknown Error' )
 		bot.send_message( chat_id = chat_id, text = 'Unknown Exception' )
 		bot.send_message( chat_id = chat_id, text = str( err )  )
 		return
 
-	new_posts_total = getNewPosts(facebook_pages, pages_dict, last_update_records)
+	logger.info( 'Fetching from facebook completes.  The next pulling job should happens in {} seconds.'.format( configurations['facebook_refresh_rate'] ) )
 
-	logger.info('Checked all posts. Next check in '
-			+ str(configurations['facebook_refresh_rate'])
-			+ ' seconds.')
+	new_posts_list = getNewPosts( facebook_pages, facebook_fetch_result, last_update_records )
+	postNewPosts( new_posts_list, chat_id )
 
-	postNewPosts(new_posts_total, chat_id)
-
-	if new_posts_total:
-		logger.info('Posted all new posts.')
-	else:
-		logger.info('No new posts.')
-
+	# By switching the show_usage_limit_status can tell you the business
+	# of your facebook token
 	if show_usage_limit_status:
 		rateLimitStatus = getRateLimitStatus()
 		msg = '=== Rate Limit Status ===\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format(
-			rateLimitStatus['call_count'],
-			rateLimitStatus['total_time'],
-			rateLimitStatus['total_cputime']
-		)
+			rateLimitStatus['call_count'], rateLimitStatus['total_time'], rateLimitStatus['total_cputime'] )
 		bot.send_message( chat_id = chat_id, text = msg )
+	logger.info( 'The bot has posted all the new posts from this fetch.' )
 
-def createCheckJob(bot):
-	"""
-	Creates a job that periodically calls the 'periodicCheck' function
+
+def createNextFacebookJob( bot ):
+	"""Create and schedule the next job for pulling the up-to-date posts
+	of the pages from the facebook.  We adjust the scheduling time to
+	prevent the bot makes too many request within a short period.
 	"""
 	global facebook_job
 
 	configurations['facebook_refresh_rate'] -= 230.0
 
-	if configurations['facebook_refresh_rate'] > 3600:
-		configurations['facebook_refresh_rate'] = 3600
-	elif configurations['facebook_refresh_rate'] < configurations['facebook_refresh_rate_default']:
-		configurations['facebook_refresh_rate'] = configurations['facebook_refresh_rate_default']
+	# The refresh rate should between the minimal value and 3600.
+	# Facebook calculates the business with 1-hour time window.
+	configurations['facebook_refresh_rate'] = min( configurations['facebook_refresh_rate'], 3600.0 )
+	configurations['facebook_refresh_rate'] = max( \
+			configurations['facebook_refresh_rate'], \
+			configurations['facebook_refresh_rate_default'] )
 
-	facebook_job = telegram_job_queue.run_once( periodicCheck, configurations['facebook_refresh_rate'], context = configurations['channel_id'] )
-
-	logger.info('Job created.')
+	facebook_job = telegram_job_queue.run_once( \
+						periodicPullFromFacebook, \
+						configurations['facebook_refresh_rate'], \
+						context = configurations['channel_id'] )
+	logger.info( 'The next checking job will be in {} seconds'.format( configurations['facebook_refresh_rate'] ) )
 
 
 def error(bot, update, error):
 	logger.warn('Update "{}" caused error "{}"'.format(update, error))
+
+# ======================================================== #
+
+# ----- Handlers ----- #
 
 def statusHandler( bot, update ):
 	rateLimitStatus = getRateLimitStatus()
@@ -798,13 +805,17 @@ def echoHandler( bot, update ):
 	bot.send_message( chat_id = update.message.chat_id, text = 'Echo: {}'.format( update.message.text ) )
 
 def getRateLimitStatus():
+	"""Get the current facebook Rait Limit"""
+
 	url = 'https://graph.facebook.com/v3.0/me'
 	args = { 'access_token': configurations['facebook_token'] }
 	respond = requests.get( url, params = args )
 
-	rateLimitStatus = json.loads( respond.headers['x-app-usage'] )
-	return rateLimitStatus
+	return json.loads( respond.headers['x-app-usage'] )
 
+# ======================================================== #
+
+# ----- The main function #
 
 def main():
 	global facebook_pages
@@ -824,13 +835,16 @@ def main():
 	# Test if new page added
 	startPage = 0
 	while startPage < len(facebook_pages):
-		endPage = (startPage + 40) if ( (startPage + 40) < len(facebook_pages) ) else len(facebook_pages)
+		endPage = min( (startPage + 40), len(facebook_pages) )
 		getMostRecentPostDates(facebook_pages[startPage:endPage])
 		# facebook only allow requesting 50 pages at a time
 		startPage += 40
 		sleep(10)
 
-	facebook_job = telegram_job_queue.run_once( periodicCheck, 0, context = configurations['channel_id'] )
+	# Execute the job as soon as possible.
+	facebook_job = telegram_job_queue.run_once( \
+					periodicPullFromFacebook, 0, \
+					context = configurations['channel_id'] )
 
 	#Log all errors
 	telegram_dispatcher.add_handler( CommandHandler( 'status', statusHandler ) )
