@@ -178,7 +178,7 @@ class JSONDatetimeEncoder( json.JSONEncoder ):
 	def default( self, obj ):
 		if isinstance( obj, datetime ):
 			return obj.isoformat()
-		
+
 		return json.JSONEncoder.default( self, obj )
 
 
@@ -699,7 +699,7 @@ def periodicPullFromFacebook(bot, job):
 		logger.error( 'Type: {}'.format( err.type ) )
 		logger.error( 'Code: {}'.format( err.code ) )
 		logger.error( 'Result: {}'.format( err.result ) )
-		
+
 		# Send a message of error to the channel
 		msg = 'Could not get facebook posts.\nMessage: {}\nType: {}\nCode: {}\nResult:{}'.format(err.message, err.type, err.code, err.result)
 		bot.send_message( chat_id = chat_id, text=msg )
@@ -757,53 +757,6 @@ def createNextFacebookJob( bot ):
 def error(bot, update, error):
 	logger.warn('Update "{}" caused error "{}"'.format(update, error))
 
-# ======================================================== #
-
-# ----- Handlers ----- #
-
-def statusHandler( bot, update ):
-	rateLimitStatus = getRateLimitStatus()
-	msg = 'Refresh Rate: {:.2f} minutes\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format(
-		configurations['facebook_refresh_rate']/60,
-		rateLimitStatus['call_count'],
-		rateLimitStatus['total_time'],
-		rateLimitStatus['total_cputime']
-	)
-	bot.send_message( chat_id = update.message.chat_id, text = msg )
-
-def startHandler( bot, update ):
-	msg = str.format(
-		'The bot has started.'
-	)
-	bot.send_message( chat_id = update.message.chat_id, text = msg )
-
-def extendHandler( bot, update ):
-	configurations['facebook_refresh_rate'] = configurations['facebook_refresh_rate'] * 4
-	msg = str.format(
-		'Extending the refresh rate to {:.2f} minutes',
-		configurations['facebook_refresh_rate']/60.0
-	)
-	bot.send_message( chat_id = update.message.chat_id, text = msg )
-
-def resetHandler( bot, update ):
-	configurations['facebook_refresh_rate'] = configurations['facebook_refresh_rate_default']
-	msg = 'Reset refresh rate to {:.2f} minutes'.format( configurations['facebook_refresh_rate']/60.0 )
-	bot.send_message( chat_id = update.message.chat_id, text = msg )
-
-def reduceHandler( bot, update ):
-	configurations['facebook_refresh_rate'] -= 250.0
-	msg = 'Reduce refresh rate to {:.2f} minutes'.format( configurations['facebook_refresh_rate']/60.0 )
-	bot.send_message( chat_id = update.message.chat_id, text = msg )
-
-def toggleRateLimitStatus( bot, update ):
-	global show_usage_limit_status
-	msg = '{} Rate Limit Status while updating.'.format( 'Hide' if show_usage_limit_status else 'Show' )
-	show_usage_limit_status = not show_usage_limit_status
-	bot.send_message( chat_id = update.message.chat_id, text = msg )
-
-def echoHandler( bot, update ):
-	bot.send_message( chat_id = update.message.chat_id, text = 'Echo: {}'.format( update.message.text ) )
-
 def getRateLimitStatus():
 	"""Get the current facebook Rait Limit"""
 
@@ -812,6 +765,73 @@ def getRateLimitStatus():
 	respond = requests.get( url, params = args )
 
 	return json.loads( respond.headers['x-app-usage'] )
+
+# ======================================================== #
+
+# ----- Handlers ----- #
+
+class BotControlHandler:
+	@staticmethod
+	def statusHandler( bot, update ):
+		rateLimitStatus = getRateLimitStatus()
+		msg = 'Refresh Rate: {:.2f} minutes\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format(
+			configurations['facebook_refresh_rate']/60,
+			rateLimitStatus['call_count'],
+			rateLimitStatus['total_time'],
+			rateLimitStatus['total_cputime']
+		)
+		bot.send_message( chat_id = update.message.chat_id, text = msg )
+
+	@staticmethod
+	def startHandler( bot, update ):
+		msg = str.format(
+			'The bot has started.'
+		)
+		bot.send_message( chat_id = update.message.chat_id, text = msg )
+
+	@staticmethod
+	def extendHandler( bot, update ):
+		configurations['facebook_refresh_rate'] = configurations['facebook_refresh_rate'] * 4
+		msg = str.format(
+			'Extending the refresh rate to {:.2f} minutes',
+			configurations['facebook_refresh_rate']/60.0
+		)
+		bot.send_message( chat_id = update.message.chat_id, text = msg )
+
+	@staticmethod
+	def resetHandler( bot, update ):
+		configurations['facebook_refresh_rate'] = configurations['facebook_refresh_rate_default']
+		msg = 'Reset refresh rate to {:.2f} minutes'.format( configurations['facebook_refresh_rate']/60.0 )
+		bot.send_message( chat_id = update.message.chat_id, text = msg )
+
+	@staticmethod
+	def reduceHandler( bot, update ):
+		configurations['facebook_refresh_rate'] -= 250.0
+		msg = 'Reduce refresh rate to {:.2f} minutes'.format( configurations['facebook_refresh_rate']/60.0 )
+		bot.send_message( chat_id = update.message.chat_id, text = msg )
+
+	@staticmethod
+	def toggleRateLimitStatus( bot, update ):
+		global show_usage_limit_status
+		msg = '{} Rate Limit Status while updating.'.format( 'Hide' if show_usage_limit_status else 'Show' )
+		show_usage_limit_status = not show_usage_limit_status
+		bot.send_message( chat_id = update.message.chat_id, text = msg )
+
+	@staticmethod
+	def echoHandler( bot, update ):
+		bot.send_message( chat_id = update.message.chat_id, text = 'Echo: {}'.format( update.message.text ) )
+
+	@staticmethod
+	def getRateLimitStatus():
+		"""Get the current facebook Rait Limit"""
+
+		url = 'https://graph.facebook.com/v3.0/me'
+		args = { 'access_token': configurations['facebook_token'] }
+		respond = requests.get( url, params = args )
+
+		return json.loads( respond.headers['x-app-usage'] )
+
+
 
 # ======================================================== #
 
@@ -847,13 +867,13 @@ def main():
 					context = configurations['channel_id'] )
 
 	#Log all errors
-	telegram_dispatcher.add_handler( CommandHandler( 'status', statusHandler ) )
-	telegram_dispatcher.add_handler( CommandHandler( 'extend', extendHandler ) )
-	telegram_dispatcher.add_handler( CommandHandler( 'start', startHandler ) )
-	telegram_dispatcher.add_handler( CommandHandler( 'reduce', reduceHandler ) )
-	telegram_dispatcher.add_handler( CommandHandler( 'reset', resetHandler ) )
-	telegram_dispatcher.add_handler( CommandHandler( 'toggle', toggleRateLimitStatus ) )
-	telegram_dispatcher.add_handler( MessageHandler( Filters.text, echoHandler ) )
+	telegram_dispatcher.add_handler( CommandHandler( 'status', BotControlHandler.statusHandler ) )
+	telegram_dispatcher.add_handler( CommandHandler( 'extend', BotControlHandler.extendHandler ) )
+	telegram_dispatcher.add_handler( CommandHandler( 'start', BotControlHandler.startHandler ) )
+	telegram_dispatcher.add_handler( CommandHandler( 'reduce', BotControlHandler.reduceHandler ) )
+	telegram_dispatcher.add_handler( CommandHandler( 'reset', BotControlHandler.resetHandler ) )
+	telegram_dispatcher.add_handler( CommandHandler( 'toggle', BotControlHandler.toggleRateLimitStatus ) )
+	telegram_dispatcher.add_handler( MessageHandler( Filters.text, BotControlHandler.echoHandler ) )
 	telegram_dispatcher.add_error_handler(error)
 
 	telegram_updater.start_polling()
