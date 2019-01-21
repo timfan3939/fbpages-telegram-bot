@@ -472,11 +472,9 @@ def checkIfAllowedAndPost(post, bot, chat_id):
 		checkIfAllowedAndPost(parent_post, bot, chat_id)
 		return True
 
-	"""
-	If there's a message in the post, and it's allowed by the
-	configurations file, store it in 'post_message', which will be passed to
-	another function based on the post type.
-	"""
+#	If there's a message in the post, and it's allowed by the
+#	configurations file, store it in 'post_message', which will be passed to
+#	another function based on the post type.
 	if 'message' in post and configurations['allow_message']:
 		post_message = post['message']
 	else:
