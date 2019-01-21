@@ -178,7 +178,7 @@ class JSONDatetimeEncoder( json.JSONEncoder ):
 	def default( self, obj ):
 		if isinstance( obj, datetime ):
 			return obj.isoformat()
-		
+
 		return json.JSONEncoder.default( self, obj )
 
 
@@ -699,7 +699,7 @@ def periodicPullFromFacebook(bot, job):
 		logger.error( 'Type: {}'.format( err.type ) )
 		logger.error( 'Code: {}'.format( err.code ) )
 		logger.error( 'Result: {}'.format( err.result ) )
-		
+
 		# Send a message of error to the channel
 		msg = 'Could not get facebook posts.\nMessage: {}\nType: {}\nCode: {}\nResult:{}'.format(err.message, err.type, err.code, err.result)
 		bot.send_message( chat_id = chat_id, text=msg )
@@ -771,7 +771,7 @@ def getRateLimitStatus():
 # ----- Handlers ----- #
 
 class BotControlHandler:
-
+	@staticmethod
 	def statusHandler( bot, update ):
 		rateLimitStatus = getRateLimitStatus()
 		msg = 'Refresh Rate: {:.2f} minutes\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format(
@@ -782,12 +782,14 @@ class BotControlHandler:
 		)
 		bot.send_message( chat_id = update.message.chat_id, text = msg )
 
+	@staticmethod
 	def startHandler( bot, update ):
 		msg = str.format(
 			'The bot has started.'
 		)
 		bot.send_message( chat_id = update.message.chat_id, text = msg )
 
+	@staticmethod
 	def extendHandler( bot, update ):
 		configurations['facebook_refresh_rate'] = configurations['facebook_refresh_rate'] * 4
 		msg = str.format(
@@ -796,25 +798,30 @@ class BotControlHandler:
 		)
 		bot.send_message( chat_id = update.message.chat_id, text = msg )
 
+	@staticmethod
 	def resetHandler( bot, update ):
 		configurations['facebook_refresh_rate'] = configurations['facebook_refresh_rate_default']
 		msg = 'Reset refresh rate to {:.2f} minutes'.format( configurations['facebook_refresh_rate']/60.0 )
 		bot.send_message( chat_id = update.message.chat_id, text = msg )
 
+	@staticmethod
 	def reduceHandler( bot, update ):
 		configurations['facebook_refresh_rate'] -= 250.0
 		msg = 'Reduce refresh rate to {:.2f} minutes'.format( configurations['facebook_refresh_rate']/60.0 )
 		bot.send_message( chat_id = update.message.chat_id, text = msg )
 
+	@staticmethod
 	def toggleRateLimitStatus( bot, update ):
 		global show_usage_limit_status
 		msg = '{} Rate Limit Status while updating.'.format( 'Hide' if show_usage_limit_status else 'Show' )
 		show_usage_limit_status = not show_usage_limit_status
 		bot.send_message( chat_id = update.message.chat_id, text = msg )
 
+	@staticmethod
 	def echoHandler( bot, update ):
 		bot.send_message( chat_id = update.message.chat_id, text = 'Echo: {}'.format( update.message.text ) )
 
+	@staticmethod
 	def getRateLimitStatus():
 		"""Get the current facebook Rait Limit"""
 
