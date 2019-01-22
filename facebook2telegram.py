@@ -769,8 +769,11 @@ def getRateLimitStatus():
 # ----- Handlers ----- #
 
 class BotControlHandler:
+	# All the bot's commands are placed here.
+
 	@staticmethod
 	def setupBotHandlers( bot_dispatcher ):
+		# An easy way to setup the handlers of a bot.
 		bot_dispatcher.add_handler( CommandHandler( 'status', BotControlHandler.statusHandler ) )
 		bot_dispatcher.add_handler( CommandHandler( 'extend', BotControlHandler.extendHandler ) )
 		bot_dispatcher.add_handler( CommandHandler( 'start', BotControlHandler.startHandler ) )
