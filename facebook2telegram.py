@@ -770,6 +770,16 @@ def getRateLimitStatus():
 
 class BotControlHandler:
 	@staticmethod
+	def setupBotHandlers( bot_dispatcher ):
+		bot_dispatcher.add_handler( CommandHandler( 'status', BotControlHandler.statusHandler ) )
+		bot_dispatcher.add_handler( CommandHandler( 'extend', BotControlHandler.extendHandler ) )
+		bot_dispatcher.add_handler( CommandHandler( 'start', BotControlHandler.startHandler ) )
+		bot_dispatcher.add_handler( CommandHandler( 'reduce', BotControlHandler.reduceHandler ) )
+		bot_dispatcher.add_handler( CommandHandler( 'reset', BotControlHandler.resetHandler ) )
+		bot_dispatcher.add_handler( CommandHandler( 'toggle', BotControlHandler.toggleRateLimitStatus ) )
+		bot_dispatcher.add_handler( MessageHandler( Filters.text, BotControlHandler.echoHandler ) )
+
+	@staticmethod
 	def statusHandler( bot, update ):
 		rateLimitStatus = getRateLimitStatus()
 		msg = 'Refresh Rate: {:.2f} minutes\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format(
@@ -841,16 +851,26 @@ def main():
 	global last_update_record_file
 	global facebook_job
 
+	# Setting file directories
 	working_directory = path.dirname(path.realpath(__file__))
 	last_update_record_file = working_directory + '/dates.json'
 
+	# Load Configurations
 	loadConfiguration( working_directory + '/botsettings.ini' )
 	loadFacebookGraph(configurations['facebook_token'])
 	loadTelegramBot(configurations['telegram_token'])
 	facebook_pages = configurations['facebook_pages']
 
+	# Log all errors
+	telegram_dispatcher.add_error_handler(error)
 
-	# Test if new page added
+	# Add Handlers
+	BotControlHandler.setupBotHandlers( telegram_dispatcher )
+
+	# Start process commands from users
+	telegram_updater.start_polling()
+
+	# Use getMostRecentPostDates to check if page is new added
 	startPage = 0
 	while startPage < len(facebook_pages):
 		endPage = min( (startPage + 40), len(facebook_pages) )
@@ -864,17 +884,7 @@ def main():
 					periodicPullFromFacebook, 0, \
 					context = configurations['channel_id'] )
 
-	#Log all errors
-	telegram_dispatcher.add_handler( CommandHandler( 'status', BotControlHandler.statusHandler ) )
-	telegram_dispatcher.add_handler( CommandHandler( 'extend', BotControlHandler.extendHandler ) )
-	telegram_dispatcher.add_handler( CommandHandler( 'start', BotControlHandler.startHandler ) )
-	telegram_dispatcher.add_handler( CommandHandler( 'reduce', BotControlHandler.reduceHandler ) )
-	telegram_dispatcher.add_handler( CommandHandler( 'reset', BotControlHandler.resetHandler ) )
-	telegram_dispatcher.add_handler( CommandHandler( 'toggle', BotControlHandler.toggleRateLimitStatus ) )
-	telegram_dispatcher.add_handler( MessageHandler( Filters.text, BotControlHandler.echoHandler ) )
-	telegram_dispatcher.add_error_handler(error)
-
-	telegram_updater.start_polling()
+	# Enter Idle state
 	telegram_updater.idle()
 
 
