@@ -227,7 +227,7 @@ def updateLastUpdateRecordToFile():
 	return True
 
 
-def getMostRecentPostDates( facebook_pages ):
+def checkNewPagesExistness( facebook_pages ):
 	"""
 	Finds if the facebook_pages are in the last update record file.
 	If the last update record file does not exists, the function
@@ -258,21 +258,29 @@ def getMostRecentPostDates( facebook_pages ):
 	if len( new_facebook_pages ) == 0:
 		return
 
-	# Fetch new added pages' last update time
-	last_update_times = facebook_graph.get_objects(
-			ids = new_facebook_pages,
-			fields = 'name,posts.limit(1){created_time}'
-	)
+	# Request 40 pages' status only.
+	startPage = 0
+	while startPage < len( new_facebook_pages ):
+		endPage = min( (startPage + 40), len( new_facebook_pages ) )
 
-	for page in new_facebook_pages:
-		try:
-			last_update_record = last_update_times[page]['posts']['data'][0]
-			last_update_records[page] = parsePostCreatedTime( last_update_record )
-			updateLastUpdateRecordToFile()
-			logger.info( 'Page {} ({}) went online.'.format( last_update_times[page]['name'], page ) )
+		# Fetch new added pages' last update time
+		last_update_times = facebook_graph.get_objects(
+				ids = new_facebook_pages[startPage:endPage],
+				fields = 'name,posts.limit(1){created_time}'
+		)
 
-		except KeyError:
-			logger.warning( 'Page {} not found.'.format( page ) )
+		for page in new_facebook_pages[startPage:endPage]:
+			try:
+				last_update_record = last_update_times[page]['posts']['data'][0]
+				last_update_records[page] = parsePostCreatedTime( last_update_record )
+				updateLastUpdateRecordToFile()
+				logger.info( 'Page {} ({}) went online.'.format( last_update_times[page]['name'], page ) )
+
+			except KeyError:
+				logger.warning( 'Page {} not found.'.format( page ) )
+
+		startPage += 40
+		sleep(10)
 
 
 def getDirectURLVideo(video_id):
@@ -873,14 +881,8 @@ def main():
 	# Start process commands from users
 	telegram_updater.start_polling()
 
-	# Use getMostRecentPostDates to check if page is new added
-	startPage = 0
-	while startPage < len(facebook_pages):
-		endPage = min( (startPage + 40), len(facebook_pages) )
-		getMostRecentPostDates(facebook_pages[startPage:endPage])
-		# facebook only allow requesting 50 pages at a time
-		startPage += 40
-		sleep(10)
+	# Use checkNewPagesExistness to check if page is new added
+	checkNewPagesExistness( facebook_pages )
 
 	# Execute the job as soon as possible.
 	facebook_job = telegram_job_queue.run_once( \
