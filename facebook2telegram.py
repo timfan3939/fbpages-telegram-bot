@@ -227,7 +227,7 @@ def updateLastUpdateRecordToFile():
 	return True
 
 
-def getMostRecentPostDates( facebook_pages ):
+def checkNewPagesExistness( facebook_pages ):
 	"""
 	Finds if the facebook_pages are in the last update record file.
 	If the last update record file does not exists, the function
@@ -258,21 +258,29 @@ def getMostRecentPostDates( facebook_pages ):
 	if len( new_facebook_pages ) == 0:
 		return
 
-	# Fetch new added pages' last update time
-	last_update_times = facebook_graph.get_objects(
-			ids = new_facebook_pages,
-			fields = 'name,posts.limit(1){created_time}'
-	)
+	# Request 40 pages' status only.
+	startPage = 0
+	while startPage < len( new_facebook_pages ):
+		endPage = min( (startPage + 40), len( new_facebook_pages ) )
 
-	for page in new_facebook_pages:
-		try:
-			last_update_record = last_update_times[page]['posts']['data'][0]
-			last_update_records[page] = parsePostCreatedTime( last_update_record )
-			updateLastUpdateRecordToFile()
-			logger.info( 'Page {} ({}) went online.'.format( last_update_times[page]['name'], page ) )
+		# Fetch new added pages' last update time
+		last_update_times = facebook_graph.get_objects(
+				ids = new_facebook_pages[startPage:endPage],
+				fields = 'name,posts.limit(1){created_time}'
+		)
 
-		except KeyError:
-			logger.warning( 'Page {} not found.'.format( page ) )
+		for page in new_facebook_pages[startPage:endPage]:
+			try:
+				last_update_record = last_update_times[page]['posts']['data'][0]
+				last_update_records[page] = parsePostCreatedTime( last_update_record )
+				updateLastUpdateRecordToFile()
+				logger.info( 'Page {} ({}) went online.'.format( last_update_times[page]['name'], page ) )
+
+			except KeyError:
+				logger.warning( 'Page {} not found.'.format( page ) )
+
+		startPage += 40
+		sleep(10)
 
 
 def getDirectURLVideo(video_id):
@@ -472,11 +480,9 @@ def checkIfAllowedAndPost(post, bot, chat_id):
 		checkIfAllowedAndPost(parent_post, bot, chat_id)
 		return True
 
-	"""
-	If there's a message in the post, and it's allowed by the
-	configurations file, store it in 'post_message', which will be passed to
-	another function based on the post type.
-	"""
+#	If there's a message in the post, and it's allowed by the
+#	configurations file, store it in 'post_message', which will be passed to
+#	another function based on the post type.
 	if 'message' in post and configurations['allow_message']:
 		post_message = post['message']
 	else:
@@ -771,6 +777,19 @@ def getRateLimitStatus():
 # ----- Handlers ----- #
 
 class BotControlHandler:
+	# All the bot's commands are placed here.
+
+	@staticmethod
+	def setupBotHandlers( bot_dispatcher ):
+		# An easy way to setup the handlers of a bot.
+		bot_dispatcher.add_handler( CommandHandler( 'status', BotControlHandler.statusHandler ) )
+		bot_dispatcher.add_handler( CommandHandler( 'extend', BotControlHandler.extendHandler ) )
+		bot_dispatcher.add_handler( CommandHandler( 'start', BotControlHandler.startHandler ) )
+		bot_dispatcher.add_handler( CommandHandler( 'reduce', BotControlHandler.reduceHandler ) )
+		bot_dispatcher.add_handler( CommandHandler( 'reset', BotControlHandler.resetHandler ) )
+		bot_dispatcher.add_handler( CommandHandler( 'toggle', BotControlHandler.toggleRateLimitStatus ) )
+		bot_dispatcher.add_handler( MessageHandler( Filters.text, BotControlHandler.echoHandler ) )
+
 	@staticmethod
 	def statusHandler( bot, update ):
 		rateLimitStatus = getRateLimitStatus()
@@ -843,40 +862,34 @@ def main():
 	global last_update_record_file
 	global facebook_job
 
+	# Setting file directories
 	working_directory = path.dirname(path.realpath(__file__))
 	last_update_record_file = working_directory + '/dates.json'
 
+	# Load Configurations
 	loadConfiguration( working_directory + '/botsettings.ini' )
 	loadFacebookGraph(configurations['facebook_token'])
 	loadTelegramBot(configurations['telegram_token'])
 	facebook_pages = configurations['facebook_pages']
 
+	# Log all errors
+	telegram_dispatcher.add_error_handler(error)
 
-	# Test if new page added
-	startPage = 0
-	while startPage < len(facebook_pages):
-		endPage = min( (startPage + 40), len(facebook_pages) )
-		getMostRecentPostDates(facebook_pages[startPage:endPage])
-		# facebook only allow requesting 50 pages at a time
-		startPage += 40
-		sleep(10)
+	# Add Handlers
+	BotControlHandler.setupBotHandlers( telegram_dispatcher )
+
+	# Start process commands from users
+	telegram_updater.start_polling()
+
+	# Use checkNewPagesExistness to check if page is new added
+	checkNewPagesExistness( facebook_pages )
 
 	# Execute the job as soon as possible.
 	facebook_job = telegram_job_queue.run_once( \
 					periodicPullFromFacebook, 0, \
 					context = configurations['channel_id'] )
 
-	#Log all errors
-	telegram_dispatcher.add_handler( CommandHandler( 'status', BotControlHandler.statusHandler ) )
-	telegram_dispatcher.add_handler( CommandHandler( 'extend', BotControlHandler.extendHandler ) )
-	telegram_dispatcher.add_handler( CommandHandler( 'start', BotControlHandler.startHandler ) )
-	telegram_dispatcher.add_handler( CommandHandler( 'reduce', BotControlHandler.reduceHandler ) )
-	telegram_dispatcher.add_handler( CommandHandler( 'reset', BotControlHandler.resetHandler ) )
-	telegram_dispatcher.add_handler( CommandHandler( 'toggle', BotControlHandler.toggleRateLimitStatus ) )
-	telegram_dispatcher.add_handler( MessageHandler( Filters.text, BotControlHandler.echoHandler ) )
-	telegram_dispatcher.add_error_handler(error)
-
-	telegram_updater.start_polling()
+	# Enter Idle state
 	telegram_updater.idle()
 
 
