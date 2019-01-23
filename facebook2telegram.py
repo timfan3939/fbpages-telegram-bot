@@ -603,42 +603,41 @@ def postNewPosts(new_posts_total, chat_id):
 	logger.info('{} posts posted to Telegram'.format(new_posts_total_count))
 
 
-def getNewPosts(facebook_pages, pages_dict, last_update_records):
-	#Iterate every page in the list loaded from the configurations file
-	new_posts_total = []
-	for page in facebook_pages:
+def filterNewPosts( fb_page_ids, page_data, last_update_records ):
+	# Iterate each page in fb_page_ids and filtering the new posts
+
+	new_posts_result = []
+	for page_id in fb_page_ids:
 		try:
-			logger.info('Getting list of posts for page {}...'.format(
-													pages_dict[page]['name']))
+			# Extract the latest posts of the page.
+			# Facebook returns the newest 25 posts.
+			posts = page_data[page_id]['posts']['data']
+			new_posts = list(
+					filter(
+						lambda post: parsePostCreatedTime( post ) > last_update_records[page_id],
+						posts
+					) )
 
-			#List of last 25 posts for current page. Every post is a dict.
-			posts_data = pages_dict[page]['posts']['data']
+			if new_posts:
+				logger.info( '{}({}) has {} new posts'.format(
+						page_data[page_id]['name'], page_id, len( new_posts ) ) )
 
-			#List of posts posted after "last posted date" for current page
-			new_posts = list(filter(
-				lambda post: parsePostCreatedTime(post) > last_update_records[page],
-				posts_data))
+				# Add additional information of the post.
+				for post in new_posts:
+					post['page'] = page_id
+					post['pagename'] = page_data[page_id]['name']
 
-			if not new_posts:
-				logger.info('No new posts for this page.')
-				continue    #Goes to next iteration (page)
-			else:
-				logger.info('Found {} new posts for this page.'.format(len(new_posts)))
-				for post in new_posts: #For later identification
-					post['page'] = page
-					post['pagename'] = pages_dict[page]['name']
-				new_posts_total = new_posts_total + new_posts
-		#If 'page' is not present in 'pages_dict' returned by the GraphAPI
+				new_posts_result = new_posts_result + new_posts
+
 		except KeyError:
-			logger.warning('Page not found: {}'.format( page ) )
+			# The page ID is not in the returning data
+			logger.warning( 'Page not found: {}'.format( page_id ) )
 			continue
-	logger.info('Checked all pages.')
 
-	#Sorts the list of new posts in chronological order
-	new_posts_total.sort( key=parsePostCreatedTime )
-	logger.info('Sorted posts by chronological order.')
+	# Sort the new posts in chronological order
+	new_posts_result.sort( key=parsePostCreatedTime )
+	return new_posts_result
 
-	return new_posts_total
 
 
 def updateFacebookPageListForRequest():
@@ -724,7 +723,7 @@ def periodicPullFromFacebook(bot, job):
 
 	logger.info( 'Fetching from facebook completes.  The next pulling job should happens in {} seconds.'.format( configurations['facebook_refresh_rate'] ) )
 
-	new_posts_list = getNewPosts( facebook_pages, facebook_fetch_result, last_update_records )
+	new_posts_list = filterNewPosts( facebook_pages, facebook_fetch_result, last_update_records )
 	postNewPosts( new_posts_list, chat_id )
 
 	# By switching the show_usage_limit_status can tell you the business
