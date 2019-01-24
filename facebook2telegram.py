@@ -74,12 +74,6 @@ telegram_updater = None
 telegram_dispatcher = None
 telegram_job_queue = None
 
-# ----- Other Variables ----- #
-# Check if the first message is posted to telegram
-# If posted, and encounter error afterward, the update is considered as posted
-# Otherwise, it may be the error from telegram, and should be posted again.
-headerPosted = False
-
 # -------------------------------------------------------- #
 
 
@@ -540,62 +534,60 @@ def checkIfAllowedAndPost(post, bot, chat_id):
 		return False
 
 
-def postToChat(post, bot, chat_id):
-	"""
-	Calls another function for posting and checks if it returns True.
-	"""
-	global headerPosted
-
-	text = '{} updated a post at {}.\n'.format(post['pagename'].replace('_', '\_'), post['created_time']) + \
-		   'ID: {}\n\n'.format(post['page']) + \
-		   '>>> [Link to the Post]({}) <<<'.format(post['permalink_url'])
-	bot.send_message(
-		chat_id = chat_id,
-		text = text,
-		parse_mode='Markdown',
-		disable_web_page_preview=True )
-	sleep(3)
-	headerPosted = True
-
-	if checkIfAllowedAndPost(post, bot, chat_id):
-		logger.info('Posted.')
-	else:
-		logger.warning('Failed.')
 
 def postNewPostsToTelegram( new_posts, channel_id ):
 	global last_update_records
-	global headerPosted
-
-	new_post_left = len( new_posts )
+	
 	delivery_time_interval = 30
 
 	for post in new_posts:
+		page_name = '{}({})'.format( post['pagename'], post['page'] )
 		logger.info( 'Posting NEW post from {}'.format( page_name ) )
 
-		page_name = post['page']
-		headerPosted = False
-
+		# Send a prelogue before the main content.
+		# The bot also sends the link in case the post cannot be posted correctly.
 		try:
-			postToChat( post, telegram_bot, channel_id )
+			prelogue =	'{} updated a post.\n'.format( page_name.replace( '_', '\_' ) ) \
+						+ 'Time (UTC): {}\n\n'.format( post['created_time'] ) \
+						+ '>>> [Link to the Post]({}) <<<'.format( post['permalink_url'] )
 
+			telegram_bot.send_message(
+					chat_id = channel_id,
+					text = prelogue,
+					parse_mode = 'Markdown',
+					disable_web_page_preview = True )
+
+		# If got error, send a message to the channel and skip the post.
+		except Exception as e:
+			msg = 'Unknown Error type "{}" when sending the prelogue of {}'.format( type( e ), page_name )
+			logger.error( msg )
+			telegram_bot.send_message( chat_id = channel_id, text = msg )
+			continue
+
+		# Send the post to telegram
+		try:
+			if checkIfAllowedAndPost( post, telegram_bot, channel_id ):
+				logger.info( 'Posted.' )
+			else:
+				logger.warning( 'Failed.' )
+
+		# The KeyError usually caused by the hidden video link.  Just ignore it.
 		except KeyError as e:
-			# The KeyError usually caused by the hidden video link.  Just ignore it
 			logger.error( 'Got Key Error, ignore the post from {}'.format( page_name ) )
 			telegram_bot.send_message(
 					chat_id = channel_id,
 					text = 'Key Error Exception from {}'.format( page_name ) )
-			headerPosted = True
+		# If got error, send a message to the channel.
 		except Exception as e:
 			msg = 'Unknown Error type "{}" when processing page {}'.format( type( e ), page_name )
 			logger.error( msg )
 			telegram_bot.send_message( chat_id = channel_id, text = msg )
 
 		finally:
-			if headerPosted:
-				last_update_records[page_name] = parsePostCreatedTime( post )
-				updateLastUpdateRecordToFile()
-				new_post_left -= 1
+			last_update_records[page_name] = parsePostCreatedTime( post )
+			updateLastUpdateRecordToFile()
 
+		# Sleep to prevent sends too frequently
 		sleep( int( delivery_time_interval ) )
 
 
