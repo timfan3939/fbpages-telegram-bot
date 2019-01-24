@@ -533,112 +533,103 @@ def checkIfAllowedAndPost(post, bot, chat_id):
 		bot.send_message("The post's type is {}, skipping".format(post['type']))
 		return False
 
-# Check if the first message is posted to telegram
-# If posted, and encounter error afterward, the update is considered as posted
-# Otherwise, it may be the error from telegram, and should be posted again.
-headerPosted = False
-
-def postToChat(post, bot, chat_id):
-	"""
-	Calls another function for posting and checks if it returns True.
-	"""
-	global headerPosted
-
-	text = '{} updated a post at {}.\n'.format(post['pagename'].replace('_', '\_'), post['created_time']) + \
-		   'ID: {}\n\n'.format(post['page']) + \
-		   '>>> [Link to the Post]({}) <<<'.format(post['permalink_url'])
-	bot.send_message(
-		chat_id = chat_id,
-		text = text,
-		parse_mode='Markdown',
-		disable_web_page_preview=True )
-	sleep(3)
-	headerPosted = True
-
-	if checkIfAllowedAndPost(post, bot, chat_id):
-		logger.info('Posted.')
-	else:
-		logger.warning('Failed.')
 
 
-def postNewPosts(new_posts_total, chat_id):
+def postNewPostsToTelegram( new_posts, channel_id ):
 	global last_update_records
-	global headerPosted
-	new_posts_total_count = len(new_posts_total)
+	
+	delivery_time_interval = 30
+	post_left = len( new_posts )
 
-	time_to_sleep = 30
-	post_left = len(new_posts_total)
+	for post in new_posts:
+		post_left -= 1
+		page_name = '{} ( {} )'.format( post['page_name'], post['page_id'] )
+		logger.info( 'Posting NEW post from {}'.format( page_name ) )
 
-	logger.info('Posting {} new posts to Telegram...'.format(new_posts_total_count))
-	for post in new_posts_total:
-		posts_page = post['page']
-		logger.info('Posting NEW post from page {}...'.format(posts_page))
-		headerPosted = False
-
+		# Send a prelogue before the main content.
+		# The bot also sends the link in case the post cannot be posted correctly.
 		try:
-			postToChat(post, telegram_bot, chat_id)
-		except BadRequest as e:
-			logger.error('Error: Telegram could not send the message')
-			logger.error('Message: {}'.format(e.message))
-			telegram_bot.send_message( chat_id = chat_id, text = 'Bad Request Exception')
-			#raise
-		except KeyError:
-			logger.error('Error: Got Key Error, ignore the post from {}'.format(post['pagename']))
-			logger.exception(' ')
-			telegram_bot.send_message( chat_id = chat_id, text = 'Key Error Exception from page {}'.format(post['pagename']))
-			headerPosted = True
+			prelogue =	'{} updated a post.\n'.format( page_name.replace( '_', '\_' ) ) \
+						+ 'Time (UTC): {}\n\n'.format( post['created_time'] ) \
+						+ '>>> [Link to the Post]({}) <<<'.format( post['permalink_url'] )
+
+			telegram_bot.send_message(
+					chat_id = channel_id,
+					text = prelogue,
+					parse_mode = 'Markdown',
+					disable_web_page_preview = True )
+
+		# If got error, send a message to the channel and skip the post.
 		except Exception as e:
-			msg = 'Unknown Error: {} when processing page {}'.format( type(e), posts_page )
-			logger.error(msg)
-			telegram_bot.send_message( chat_id = chat_id, text = msg )
-		finally:
-			if headerPosted:
-				last_update_records[posts_page] = parsePostCreatedTime(post)
-				updateLastUpdateRecordToFile()
-				post_left -= 1
-			telegram_bot.send_message( chat_id = chat_id, text = '{} post(s) left'.format(post_left) )
-
-		logger.info('Waiting {} seconds before next post...'.format(time_to_sleep))
-		sleep(int(time_to_sleep))
-	logger.info('{} posts posted to Telegram'.format(new_posts_total_count))
-
-
-def getNewPosts(facebook_pages, pages_dict, last_update_records):
-	#Iterate every page in the list loaded from the configurations file
-	new_posts_total = []
-	for page in facebook_pages:
-		try:
-			logger.info('Getting list of posts for page {}...'.format(
-													pages_dict[page]['name']))
-
-			#List of last 25 posts for current page. Every post is a dict.
-			posts_data = pages_dict[page]['posts']['data']
-
-			#List of posts posted after "last posted date" for current page
-			new_posts = list(filter(
-				lambda post: parsePostCreatedTime(post) > last_update_records[page],
-				posts_data))
-
-			if not new_posts:
-				logger.info('No new posts for this page.')
-				continue    #Goes to next iteration (page)
-			else:
-				logger.info('Found {} new posts for this page.'.format(len(new_posts)))
-				for post in new_posts: #For later identification
-					post['page'] = page
-					post['pagename'] = pages_dict[page]['name']
-				new_posts_total = new_posts_total + new_posts
-		#If 'page' is not present in 'pages_dict' returned by the GraphAPI
-		except KeyError:
-			logger.warning('Page not found: {}'.format( page ) )
+			msg = 'Unknown Error type "{}" when sending the prelogue of {}'.format( type( e ), page_name )
+			logger.error( msg )
+			telegram_bot.send_message( chat_id = channel_id, text = msg )
 			continue
-	logger.info('Checked all pages.')
 
-	#Sorts the list of new posts in chronological order
-	new_posts_total.sort( key=parsePostCreatedTime )
-	logger.info('Sorted posts by chronological order.')
+		# Send the post to telegram
+		try:
+			if checkIfAllowedAndPost( post, telegram_bot, channel_id ):
+				logger.info( 'Posted.' )
+			else:
+				logger.warning( 'Failed.' )
 
-	return new_posts_total
+		# The KeyError usually caused by the hidden video link.  Just ignore it.
+		except KeyError as e:
+			logger.error( 'Got Key Error, ignore the post from {}'.format( page_name ) )
+			telegram_bot.send_message(
+					chat_id = channel_id,
+					text = 'Key Error Exception from {}'.format( page_name ) )
+		# If got error, send a message to the channel.
+		except Exception as e:
+			msg = 'Unknown Error type "{}" when processing page {}'.format( type( e ), page_name )
+			logger.error( msg )
+			telegram_bot.send_message( chat_id = channel_id, text = msg )
+
+		finally:
+			last_update_records[post['page_id']] = parsePostCreatedTime( post )
+			updateLastUpdateRecordToFile()
+
+		# Sleep to prevent sends too frequently
+		if post_left > 0:
+			sleep( int( delivery_time_interval ) )
+
+
+
+def filterNewPosts( fb_page_ids, page_data, last_update_records ):
+	# Iterate each page in fb_page_ids and filtering the new posts
+
+	new_posts_result = []
+	for page_id in fb_page_ids:
+		try:
+			# Extract the latest posts of the page.
+			# Facebook returns the newest 25 posts.
+			posts = page_data[page_id]['posts']['data']
+			new_posts = list(
+					filter(
+						lambda post: parsePostCreatedTime( post ) > last_update_records[page_id],
+						posts
+					) )
+
+			if new_posts:
+				logger.info( '{}({}) has {} new posts'.format(
+						page_data[page_id]['name'], page_id, len( new_posts ) ) )
+
+				# Add additional information of the post.
+				for post in new_posts:
+					post['page_id'] = page_id
+					post['page_name'] = page_data[page_id]['name']
+
+				new_posts_result = new_posts_result + new_posts
+
+		except KeyError:
+			# The page ID is not in the returning data
+			logger.warning( 'Page not found: {}'.format( page_id ) )
+			continue
+
+	# Sort the new posts in chronological order
+	new_posts_result.sort( key=parsePostCreatedTime )
+	return new_posts_result
+
 
 
 def updateFacebookPageListForRequest():
@@ -672,7 +663,7 @@ def periodicPullFromFacebook(bot, job):
 	updateFacebookPageListForRequest()
 	createNextFacebookJob( bot )
 
-	chat_id = job.context
+	tg_channel_id = job.context
 	logger.info('Accessing Facebook...')
 
 	page_field = [	'name', 'posts' ]
@@ -718,14 +709,14 @@ def periodicPullFromFacebook(bot, job):
 	except Exception as err:
 		# In case there are errors other than facebook's error
 		logger.error( 'Unknown Error' )
-		bot.send_message( chat_id = chat_id, text = 'Unknown Exception' )
-		bot.send_message( chat_id = chat_id, text = str( err )  )
+		bot.send_message( chat_id = tg_channel_id, text = 'Unknown Exception' )
+		bot.send_message( chat_id = tg_channel_id, text = str( err )  )
 		return
 
 	logger.info( 'Fetching from facebook completes.  The next pulling job should happens in {} seconds.'.format( configurations['facebook_refresh_rate'] ) )
 
-	new_posts_list = getNewPosts( facebook_pages, facebook_fetch_result, last_update_records )
-	postNewPosts( new_posts_list, chat_id )
+	new_posts_list = filterNewPosts( facebook_pages, facebook_fetch_result, last_update_records )
+	postNewPostsToTelegram( new_posts_list, tg_channel_id )
 
 	# By switching the show_usage_limit_status can tell you the business
 	# of your facebook token
