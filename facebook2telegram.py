@@ -74,6 +74,12 @@ telegram_updater = None
 telegram_dispatcher = None
 telegram_job_queue = None
 
+# ----- Other Variables ----- #
+# Check if the first message is posted to telegram
+# If posted, and encounter error afterward, the update is considered as posted
+# Otherwise, it may be the error from telegram, and should be posted again.
+headerPosted = False
+
 # -------------------------------------------------------- #
 
 
@@ -533,10 +539,6 @@ def checkIfAllowedAndPost(post, bot, chat_id):
 		bot.send_message("The post's type is {}, skipping".format(post['type']))
 		return False
 
-# Check if the first message is posted to telegram
-# If posted, and encounter error afterward, the update is considered as posted
-# Otherwise, it may be the error from telegram, and should be posted again.
-headerPosted = False
 
 def postToChat(post, bot, chat_id):
 	"""
