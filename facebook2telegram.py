@@ -539,9 +539,11 @@ def postNewPostsToTelegram( new_posts, channel_id ):
 	global last_update_records
 	
 	delivery_time_interval = 30
+	post_left = len( new_posts )
 
 	for post in new_posts:
-		page_name = '{}({})'.format( post['pagename'], post['page'] )
+		post_left -= 1
+		page_name = '{} ( {} )'.format( post['page_name'], post['page_id'] )
 		logger.info( 'Posting NEW post from {}'.format( page_name ) )
 
 		# Send a prelogue before the main content.
@@ -584,11 +586,12 @@ def postNewPostsToTelegram( new_posts, channel_id ):
 			telegram_bot.send_message( chat_id = channel_id, text = msg )
 
 		finally:
-			last_update_records[page_name] = parsePostCreatedTime( post )
+			last_update_records[post['page_id']] = parsePostCreatedTime( post )
 			updateLastUpdateRecordToFile()
 
 		# Sleep to prevent sends too frequently
-		sleep( int( delivery_time_interval ) )
+		if post_left > 0:
+			sleep( int( delivery_time_interval ) )
 
 
 
@@ -613,8 +616,8 @@ def filterNewPosts( fb_page_ids, page_data, last_update_records ):
 
 				# Add additional information of the post.
 				for post in new_posts:
-					post['page'] = page_id
-					post['pagename'] = page_data[page_id]['name']
+					post['page_id'] = page_id
+					post['page_name'] = page_data[page_id]['name']
 
 				new_posts_result = new_posts_result + new_posts
 
