@@ -562,47 +562,42 @@ def postToChat(post, bot, chat_id):
 	else:
 		logger.warning('Failed.')
 
-
-def postNewPosts(new_posts_total, chat_id):
+def postNewPostsToTelegram( new_posts, channel_id ):
 	global last_update_records
 	global headerPosted
-	new_posts_total_count = len(new_posts_total)
 
-	time_to_sleep = 30
-	post_left = len(new_posts_total)
+	new_post_left = len( new_posts )
+	delivery_time_interval = 30
 
-	logger.info('Posting {} new posts to Telegram...'.format(new_posts_total_count))
-	for post in new_posts_total:
-		posts_page = post['page']
-		logger.info('Posting NEW post from page {}...'.format(posts_page))
+	for post in new_posts:
+		logger.info( 'Posting NEW post from {}'.format( page_name ) )
+
+		page_name = post['page']
 		headerPosted = False
 
 		try:
-			postToChat(post, telegram_bot, chat_id)
-		except BadRequest as e:
-			logger.error('Error: Telegram could not send the message')
-			logger.error('Message: {}'.format(e.message))
-			telegram_bot.send_message( chat_id = chat_id, text = 'Bad Request Exception')
-			#raise
-		except KeyError:
-			logger.error('Error: Got Key Error, ignore the post from {}'.format(post['pagename']))
-			logger.exception(' ')
-			telegram_bot.send_message( chat_id = chat_id, text = 'Key Error Exception from page {}'.format(post['pagename']))
+			postToChat( post, telegram_bot, channel_id )
+
+		except KeyError as e:
+			# The KeyError usually caused by the hidden video link.  Just ignore it
+			logger.error( 'Got Key Error, ignore the post from {}'.format( page_name ) )
+			telegram_bot.send_message(
+					chat_id = channel_id,
+					text = 'Key Error Exception from {}'.format( page_name ) )
 			headerPosted = True
 		except Exception as e:
-			msg = 'Unknown Error: {} when processing page {}'.format( type(e), posts_page )
-			logger.error(msg)
-			telegram_bot.send_message( chat_id = chat_id, text = msg )
+			msg = 'Unknown Error type "{}" when processing page {}'.format( type( e ), page_name )
+			logger.error( msg )
+			telegram_bot.send_message( chat_id = channel_id, text = msg )
+
 		finally:
 			if headerPosted:
-				last_update_records[posts_page] = parsePostCreatedTime(post)
+				last_update_records[page_name] = parsePostCreatedTime( post )
 				updateLastUpdateRecordToFile()
-				post_left -= 1
-			telegram_bot.send_message( chat_id = chat_id, text = '{} post(s) left'.format(post_left) )
+				new_post_left -= 1
 
-		logger.info('Waiting {} seconds before next post...'.format(time_to_sleep))
-		sleep(int(time_to_sleep))
-	logger.info('{} posts posted to Telegram'.format(new_posts_total_count))
+		sleep( int( delivery_time_interval ) )
+
 
 
 def filterNewPosts( fb_page_ids, page_data, last_update_records ):
@@ -673,7 +668,7 @@ def periodicPullFromFacebook(bot, job):
 	updateFacebookPageListForRequest()
 	createNextFacebookJob( bot )
 
-	chat_id = job.context
+	tg_channel_id = job.context
 	logger.info('Accessing Facebook...')
 
 	page_field = [	'name', 'posts' ]
@@ -719,14 +714,14 @@ def periodicPullFromFacebook(bot, job):
 	except Exception as err:
 		# In case there are errors other than facebook's error
 		logger.error( 'Unknown Error' )
-		bot.send_message( chat_id = chat_id, text = 'Unknown Exception' )
-		bot.send_message( chat_id = chat_id, text = str( err )  )
+		bot.send_message( chat_id = tg_channel_id, text = 'Unknown Exception' )
+		bot.send_message( chat_id = tg_channel_id, text = str( err )  )
 		return
 
 	logger.info( 'Fetching from facebook completes.  The next pulling job should happens in {} seconds.'.format( configurations['facebook_refresh_rate'] ) )
 
 	new_posts_list = filterNewPosts( facebook_pages, facebook_fetch_result, last_update_records )
-	postNewPosts( new_posts_list, chat_id )
+	postNewPostsToTelegram( new_posts_list, tg_channel_id )
 
 	# By switching the show_usage_limit_status can tell you the business
 	# of your facebook token
