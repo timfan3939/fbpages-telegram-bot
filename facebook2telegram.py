@@ -686,7 +686,7 @@ def periodicPullFromFacebook(bot, job):
 		bot.send_message( chat_id = tg_channel_id, text = str( err )  )
 		return
 
-	logger.info( 'Fetching from facebook completes.  The next pulling job should happens in {} seconds.'.format( configurations['facebook_refresh_rate'] ) )
+	logger.info( 'Fetching from facebook completed.' )
 
 	new_posts_list = filterNewPosts( facebook_pages, facebook_fetch_result, last_update_records )
 	postNewPostsToTelegram( new_posts_list, tg_channel_id )
