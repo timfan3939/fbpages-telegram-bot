@@ -661,7 +661,6 @@ def periodicPullFromFacebook(bot, job):
 			ids=facebook_pages, \
 			fields = request_field, \
 			locale=configurations['locale'] )
-		logger.info('Successfully fetched Facebook posts.')
 
 	except facebook.GraphAPIError as err:
 		logger.error( 'Could not get Facebook posts.' )
@@ -671,22 +670,24 @@ def periodicPullFromFacebook(bot, job):
 		logger.error( 'Result: {}'.format( err.result ) )
 
 		# Send a message of error to the channel
-		msg = 'Could not get facebook posts.\nMessage: {}\nType: {}\nCode: {}\nResult:{}'.format(err.message, err.type, err.code, err.result)
-		bot.send_message( chat_id = chat_id, text=msg )
+		msg = 'Could not get facebook posts.\nMessage: {}\nType: {}\nCode: {}\nResult:{}'.format(
+				err.message, err.type, err.code, err.result )
+		bot.send_message( chat_id = chat_id, text = msg )
 
 		# Extends the refresh rate no matter what the error is.
 		configurations['facebook_refresh_rate'] *= 2
+		logger.error( msg )
 		logger.error( 'Extend refresh rate to {}.'.format( configurations['facebook_refresh_rate'] ) )
 		return
 
 	except Exception as err:
 		# In case there are errors other than facebook's error
-		logger.error( 'Unknown Error' )
-		bot.send_message( chat_id = tg_channel_id, text = 'Unknown Exception' )
-		bot.send_message( chat_id = tg_channel_id, text = str( err )  )
+		msg = 'Got Unknown Exception: {}'.format( str( err ) )
+		bog.send_message( chat_id = tg_channel_id, text = msg )
+		logger.error( msg )
 		return
 
-	logger.info( 'Fetching from facebook completed.' )
+	logger.info( 'Successfully fetching posts from facebook' )
 
 	new_posts_list = filterNewPosts( facebook_pages, facebook_fetch_result, last_update_records )
 	postNewPostsToTelegram( new_posts_list, tg_channel_id )
