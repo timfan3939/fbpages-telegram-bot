@@ -458,40 +458,47 @@ def postLinkToChat(post, post_message, bot, chat_id):
 		text=post_link+'\n'+post_message)
 
 
-def checkIfAllowedAndPost(post, bot, chat_id):
-	"""
-	Checks the type of the Facebook post and if it's allowed by the
-	configurations file, then calls the appropriate function for each type.
-	"""
-	#If it's a shared post, call this function for the parent post
+def checkIfAllowedAndPost( post, bot, chat_id ):
+	# Checks the type of the Facebook post and if it's allowed by the
+	# configurations file, then calls the appropriate function for each type.
+
+	# If it's a shared post, call this function for the parent post
 	if 'parent_id' in post and configurations['allow_shared']:
-		logger.info('This is a shared post.')
+		logger.info( 'This is a shared post.' )
 
 		if 'message' in post:
 			bot.send_message( chat_id = chat_id, text = post['message'] )
 
-
 		parent_post = facebook_graph.get_object(
-			id=post['parent_id'],
-			fields='created_time,type,message,full_picture,story,\
-					source,link,caption,parent_id,object_id',
-			locale=configurations['locale'])
-		logger.info('Accessing parent post...')
-		checkIfAllowedAndPost(parent_post, bot, chat_id)
+				id = post['parent_id'],
+				fields = ','.join( [
+					'created_time',
+					'type',
+					'message',
+					'full_picture',
+					'story',
+					'source',
+					'link',
+					'caption',
+					'parent_id',
+					'object_id' ] ) ,
+				locale = configurations['locale'] )
+		logger.info( 'Accessing parent post...' )
+		checkIfAllowedAndPost( parent_post, bot, chat_id )
 		return True
 
-#	If there's a message in the post, and it's allowed by the
-#	configurations file, store it in 'post_message', which will be passed to
-#	another function based on the post type.
+	# If there's a message in the post, and it's allowed by the
+	# configurations file, store it in 'post_message', which will be passed to
+	# another function based on the post type.
 	if 'message' in post and configurations['allow_message']:
 		post_message = post['message']
 	else:
 		post_message = ''
 
-	#Telegram doesn't allow media captions with more than 200 characters
-	#Send separate message with the post's message
-	if (len(post_message) > 200) and \
-						(post['type'] == 'photo' or post['type'] == 'video'):
+	# Telegram doesn't allow media captions with more than 200 characters
+	# Send separate message with the post's message
+	if ( len( post_message ) > 200 ) and \
+						( post['type'] == 'photo' or post['type'] == 'video' ):
 		separate_message = post_message
 		post_message = ''
 		send_separate = True
@@ -499,35 +506,34 @@ def checkIfAllowedAndPost(post, bot, chat_id):
 		separate_message = ''
 		send_separate = False
 
+	# Calling the function according to the type of the post.
+	# The type of a post could be: link, status, photo, video, and offer
 	if post['type'] == 'photo' and configurations['allow_photo']:
-		logger.info('Posting photo...')
-		media_message = postPhotoToChat(post, post_message, bot, chat_id)
+		logger.info( 'Posting photo...' )
+		media_message = postPhotoToChat( post, post_message, bot, chat_id )
 		if send_separate:
-			media_message.reply_text(separate_message)
+			media_message.reply_text( separate_message )
 		return True
+
 	elif post['type'] == 'video' and configurations['allow_video']:
-		logger.info('Posting video...')
-		media_message = postVideoToChat(post, post_message, bot, chat_id)
+		logger.info( 'Posting video...' )
+		media_message = postVideoToChat( post, post_message, bot, chat_id )
 		if send_separate:
-			media_message.reply_text(separate_message)
+			media_message.reply_text( separate_message )
 		return True
+
 	elif post['type'] == 'status' and configurations['allow_status']:
-		logger.info('Posting status...')
-		try:
-			bot.send_message(
-				chat_id=chat_id,
-				text=post['message'])
-			return True
-		except KeyError:
-			logger.warning('Message not found, posting story...')
-			bot.send_message(
-				chat_id=chat_id,
-				text=post['story'])
-			return True
-	elif post['type'] == 'link' and configurations['allow_link']:
-		logger.info('Posting link...')
-		postLinkToChat(post, post_message, bot, chat_id)
+		logger.info( 'Posting status...' )
+		bot.send_message(
+			chat_id=chat_id,
+			text=post['message'])
 		return True
+
+	elif post['type'] == 'link' and configurations['allow_link']:
+		logger.info( 'Posting link...' )
+		postLinkToChat( post, post_message, bot, chat_id )
+		return True
+
 	else:
 		logger.warning('This post is a {}, skipping...'.format(post['type']))
 		bot.send_message("The post's type is {}, skipping".format(post['type']))
