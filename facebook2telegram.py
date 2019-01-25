@@ -624,7 +624,8 @@ def updateFacebookPageListForRequest():
 	logger.info( "Completed" )
 
 
-def periodicPullFromFacebook(bot, job):
+
+def pullPostsFromFacebook( bot, tg_channel_id ):
 	"""
 	Checks for new posts for every page in the list loaded from the
 	configurations file, posts them, and updates the dates.json file, which
@@ -634,10 +635,6 @@ def periodicPullFromFacebook(bot, job):
 	global last_update_records
 
 	updateFacebookPageListForRequest()
-	createNextFacebookJob( bot )
-
-	tg_channel_id = job.context
-	logger.info('Accessing Facebook...')
 
 	page_field = [	'name', 'posts' ]
 	post_field = [	'created_time',
@@ -657,10 +654,11 @@ def periodicPullFromFacebook(bot, job):
 
 	try:
 		#Request to the GraphAPI with all the pages (list) and required fields
+		logger.info('Accessing Facebook...')
 		facebook_fetch_result = facebook_graph.get_objects( \
-			ids=facebook_pages, \
-			fields = request_field, \
-			locale=configurations['locale'] )
+				ids=facebook_pages, \
+				fields = request_field, \
+				locale=configurations['locale'] )
 
 	except facebook.GraphAPIError as err:
 		logger.error( 'Could not get Facebook posts.' )
@@ -697,9 +695,17 @@ def periodicPullFromFacebook(bot, job):
 	if show_usage_limit_status:
 		rateLimitStatus = getRateLimitStatus()
 		msg = '=== Rate Limit Status ===\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format(
-			rateLimitStatus['call_count'], rateLimitStatus['total_time'], rateLimitStatus['total_cputime'] )
+				rateLimitStatus['call_count'], rateLimitStatus['total_time'], rateLimitStatus['total_cputime'] )
 		bot.send_message( chat_id = chat_id, text = msg )
 	logger.info( 'The bot has posted all the new posts from this fetch.' )
+
+def periodicPullFromFacebook( bot, job ):
+	# Create the next job
+	createNextFacebookJob( bot )
+
+	# The job.context has the telegram channel ID
+	pullPostsFromFacebook( bot, job.context )
+
 
 
 def createNextFacebookJob( bot ):
@@ -753,6 +759,7 @@ class BotControlHandler:
 	def setupBotHandlers( bot_dispatcher ):
 		# An easy way to setup the handlers of a bot.
 		bot_dispatcher.add_handler( CommandHandler( 'status', BotControlHandler.statusHandler ) )
+		bot_dispatcher.add_handler( CommandHandler( 'fire', BotControlHandler.fireHandler ) )
 		bot_dispatcher.add_handler( CommandHandler( 'extend', BotControlHandler.extendHandler ) )
 		bot_dispatcher.add_handler( CommandHandler( 'start', BotControlHandler.startHandler ) )
 		bot_dispatcher.add_handler( CommandHandler( 'reduce', BotControlHandler.reduceHandler ) )
@@ -798,6 +805,11 @@ class BotControlHandler:
 		configurations['facebook_refresh_rate'] -= 250.0
 		msg = 'Reduce refresh rate to {:.2f} minutes'.format( configurations['facebook_refresh_rate']/60.0 )
 		bot.send_message( chat_id = update.message.chat_id, text = msg )
+
+	@staticmethod
+	def fireHandler( bot, update ):
+		pullPostsFromFacebook( bot, configurations['channel_id'] )
+		BotControlHandler.statusHandler( bot, update )
 
 	@staticmethod
 	def toggleRateLimitStatus( bot, update ):
