@@ -596,7 +596,7 @@ def postNewPostsToTelegram( new_posts, channel_id ):
 
 
 def filterNewPosts( fb_page_ids, page_data, last_update_records ):
-	# Iterate each page in fb_page_ids and filtering the new posts
+	# Iterate each page in fb_page_ids and filter the new posts
 
 	new_posts_result = []
 	for page_id in fb_page_ids:
