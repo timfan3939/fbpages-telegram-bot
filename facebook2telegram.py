@@ -17,7 +17,7 @@ import sys
 from time import sleep
 
 # Date comparison
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Download media
 from urllib import request
@@ -537,7 +537,7 @@ def checkIfAllowedAndPost(post, bot, chat_id):
 
 def postNewPostsToTelegram( new_posts, channel_id ):
 	global last_update_records
-	
+
 	delivery_time_interval = 30
 	post_left = len( new_posts )
 
@@ -750,11 +750,16 @@ def createNextFacebookJob( bot ):
 						periodicPullFromFacebook, \
 						configurations['facebook_refresh_rate'], \
 						context = configurations['channel_id'] )
-	logger.info( 'The next checking job will be in {} seconds'.format( configurations['facebook_refresh_rate'] ) )
+
+	logger.info( 'The next request to facebook will be fired around {} ({} seconds)'.format(
+			datetime.now() + timedelta( seconds = configurations['facebook_refresh_rate'] ), configurations['facebook_refresh_rate'] ) )
+
 
 
 def error(bot, update, error):
 	logger.warn('Update "{}" caused error "{}"'.format(update, error))
+
+
 
 def getRateLimitStatus():
 	"""Get the current facebook Rait Limit"""
