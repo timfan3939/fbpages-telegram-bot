@@ -315,59 +315,24 @@ def getDirectURLVideoYDL(URL):
 		return None
 
 
-def postPhotoToChat(post, post_message, bot, chat_id):
-	"""
-	Posts the post's picture with the appropriate caption.
-	"""
-	direct_link = post['full_picture']
-
+def postPhotoToChat( post, post_message, bot, chat_id ):
+	# Send the post's (resized) picture with the message.
 	try:
 		message = bot.send_photo(
-			chat_id=chat_id,
-			photo=direct_link,
-			caption=post_message)
+				chat_id = chat_id,
+				photo = post['full_picture'],
+				caption = post_message,
+				timeout = 120 )
 		return message
 
-	except (BadRequest, TimedOut):
-		"""
-		If the picture can't be sent using its URL,
-		it is downloaded locally and uploaded to Telegram.
-		"""
-		try:
-			logger.info('Sending by URL failed, downloading file...')
-			request.urlretrieve(direct_link, working_directory+'/temp.jpg')
-			logger.info('Sending file...')
-			with open(working_directory+'/temp.jpg', 'rb') as picture:
-				message = bot.send_photo(
-					chat_id=chat_id,
-					photo=picture,
-					caption=post_message,
-					timeout=120)
-			remove(working_directory+'/temp.jpg')   #Delete the temp picture
-			return message
-
-		except TimedOut:
-			"""
-			If there is a timeout, try again with a higher
-			timeout value for 'bot.send_photo'
-			"""
-			logger.warning('File upload timed out, trying again...')
-			logger.info('Sending file...')
-			with open(working_directory+'/temp.jpg', 'rb') as picture:
-				message = bot.send_photo(
-					chat_id=chat_id,
-					photo=picture,
-					caption=post_message,
-					timeout=200)
-			remove(working_directory+'/temp.jpg')   #Delete the temp picture
-			return message
-
-		except BadRequest:
-			logger.warning('Could not send photo file, sending link...')
-			bot.send_message(    #Send direct link as a message
-				chat_id=chat_id,
-				text=direct_link+'\n'+post_message)
-			return message
+	# If the bot did not send the photo successfully, just send the link
+	# to client
+	except ( BadRequest, TimedOut ):
+		msg = 'Picture handling failed.  Direct link to the picture: {}\n--\n{}'.format( direct_link, post_message )
+		message = bot.send_message(
+				chat_id = chat_id,
+				text = msg )
+		return message
 
 
 def postVideoToChat(post, post_message, bot, chat_id):
