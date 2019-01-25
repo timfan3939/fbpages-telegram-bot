@@ -644,11 +644,13 @@ def updateFacebookPageListForRequest():
 	facebook_pages_request_size = configurations['facebook_page_per_request']
 	facebook_pages_request_end = ( facebook_pages_request_index + facebook_pages_request_size ) % len( facebook_page_list )
 
+	logger.info( "Update page list for requesting the facebook ({}->{})...".format( facebook_pages_request_index, facebook_pages_request_end ) )
 	facebook_pages = []
 	while facebook_pages_request_index != facebook_pages_request_end:
 		facebook_pages.append( facebook_page_list[ facebook_pages_request_index ] )
-		logger.info( '{}: {}'.format( facebook_pages_request_index, facebook_page_list[facebook_pages_request_index] ) )
+		logger.debug( '{}: {}'.format( facebook_pages_request_index, facebook_page_list[facebook_pages_request_index] ) )
 		facebook_pages_request_index = ( facebook_pages_request_index + 1 ) % len( facebook_page_list )
+	logger.info( "Completed" )
 
 
 def periodicPullFromFacebook(bot, job):
