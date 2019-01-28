@@ -697,7 +697,7 @@ def pullPostsFromFacebook( bot, tg_channel_id ):
 		rateLimitStatus = getRateLimitStatus()
 		msg = '=== Rate Limit Status ===\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format(
 				rateLimitStatus['call_count'], rateLimitStatus['total_time'], rateLimitStatus['total_cputime'] )
-		bot.send_message( chat_id = chat_id, text = msg )
+		bot.send_message( chat_id = tg_channel_id, text = msg )
 	logger.info( 'The bot has posted all the new posts from this fetch.' )
 
 def periodicPullFromFacebook( bot, job ):
