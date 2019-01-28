@@ -533,6 +533,7 @@ def postNewPostsToTelegram( new_posts, channel_id ):
 		except Exception as e:
 			msg = 'Unknown Error type "{}" when sending the prelogue of {}'.format( type( e ), page_name )
 			logger.error( msg )
+			logger.error( e.args )
 			telegram_bot.send_message( chat_id = channel_id, text = msg )
 			continue
 
@@ -553,6 +554,7 @@ def postNewPostsToTelegram( new_posts, channel_id ):
 		except Exception as e:
 			msg = 'Unknown Error type "{}" when processing page {}'.format( type( e ), page_name )
 			logger.error( msg )
+			logger.error( e.args )
 			telegram_bot.send_message( chat_id = channel_id, text = msg )
 
 		finally:
@@ -678,9 +680,10 @@ def pullPostsFromFacebook( bot, tg_channel_id ):
 
 	except Exception as err:
 		# In case there are errors other than facebook's error
-		msg = 'Got Unknown Exception: {}'.format( str( err ) )
-		bog.send_message( chat_id = tg_channel_id, text = msg )
+		msg = 'Got Unknown Exception when fetching from facebook: {}'.format( str( err ) )
 		logger.error( msg )
+		logger.error( err.args )
+		bot.send_message( chat_id = tg_channel_id, text = msg )
 		return
 
 	logger.info( 'Successfully fetching posts from facebook' )
