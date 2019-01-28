@@ -441,7 +441,6 @@ def checkIfAllowedAndPost( post, bot, chat_id ):
 					'type',
 					'message',
 					'full_picture',
-					'story',
 					'source',
 					'link',
 					'caption',
@@ -636,18 +635,17 @@ def pullPostsFromFacebook( bot, tg_channel_id ):
 
 	updateFacebookPageListForRequest()
 
-	page_field = [	'name', 'posts' ]
-	post_field = [	'created_time',
-					'type',
-					'message',
-					'full_picture',
-					'story',
-					'source',
-					'link',
-					'caption',
-					'parent_id',
-					'object_id',
-					'permalink_url' ]
+	page_field = [	'name', 'posts' ]	# The name of the page, the feed of posts
+	post_field = [	'created_time',		# The time the post published
+					'type',				# The type of the post (link, status, photo, video, offer)
+					'message',			# The status message in the post
+					'full_picture',		# The image of the post
+					'source',			# URL of the video or other objects in the post
+					'link',				# The link attached to the post
+					'caption',			# The link's caption in the post
+					'parent_id',		# The ID of a parent post for this post
+					'object_id',		# The ID of uploaded photo or video
+					'permalink_url' ]	# The URL of the post
 	request_field = ','.join( page_field ) \
 					+ '{}{}{}'.format( '{', ','.join( post_field ), '}' )
 	logger.info( 'requesting field: {}'.format( request_field ) )
