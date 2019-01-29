@@ -328,7 +328,7 @@ def postPhotoToChat( post, post_message, bot, chat_id ):
 	# If the bot did not send the photo successfully, just send the link
 	# to client
 	except ( BadRequest, TimedOut ):
-		msg = 'Picture handling failed.  Direct link to the picture: {}\n--\n{}'.format( direct_link, post_message )
+		msg = 'Picture handling failed.  Here is the link of the picture: {}\n--\n{}'.format( post['full_picture'], post_message )
 		message = bot.send_message(
 				chat_id = chat_id,
 				text = msg )
