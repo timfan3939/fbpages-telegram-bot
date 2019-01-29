@@ -378,21 +378,10 @@ def checkIfAllowedAndPost( post, bot, chat_id ):
 	# If there's a message in the post, and it's allowed by the
 	# configurations file, store it in 'post_message', which will be passed to
 	# another function based on the post type.
+	post_message = ''
 	if 'message' in post and configurations['allow_message']:
 		post_message = post['message']
-	else:
-		post_message = ''
 
-	# Telegram doesn't allow media captions with more than 200 characters
-	# Send separate message with the post's message
-	if ( len( post_message ) > 200 ) and \
-						( post['type'] == 'photo' or post['type'] == 'video' ):
-		separate_message = post_message
-		post_message = ''
-		send_separate = True
-	else:
-		separate_message = ''
-		send_separate = False
 
 	# Calling the function according to the type of the post.
 	# The type of a post could be: link, status, photo, video, and offer
