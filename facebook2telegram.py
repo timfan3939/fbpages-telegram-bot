@@ -332,19 +332,14 @@ def postVideoToChat(post, post_message, bot, chat_id):
 
 
 def postLinkToChat(post, post_message, bot, chat_id):
-	"""
-	Checks if the post has a message with its link in it. If it does,
-	it sends only the message. If not, it sends the link followed by the
-	post's message.
-	"""
-	if post['link'] in post_message:
-		post_link = ''
-	else:
-		post_link = post['link']
+	# Send the link with the message
 
-	bot.send_message(
-		chat_id=chat_id,
-		text=post_link+'\n'+post_message)
+	msg = 'Shared Link: {}'.format( post['link'] )
+	tg_msg = bot.send_message(
+			chat_id = chat_id,
+			text = msg )
+	tg_msg.reply_text( post_message )
+
 
 
 def checkIfAllowedAndPost( post, bot, chat_id ):
