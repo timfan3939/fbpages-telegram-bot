@@ -704,8 +704,14 @@ def periodicPullFromFacebook( bot, job ):
 	# Create the next job
 	createNextFacebookJob( bot )
 
-	# The job.context has the telegram channel ID
-	pullPostsFromFacebook( bot, job.context )
+	try:
+		# The job.context has the telegram channel ID
+		pullPostsFromFacebook( bot, job.context )
+	except Exception as err:
+		msg = 'Got Unknown Exception when calling pullPostsFromFacebook: {}'.format( str( err ) )
+		logger.error( msg )
+		logger.error( err.args )
+		bot.send_message( chat_id = job.context, text = msg )
 
 
 
