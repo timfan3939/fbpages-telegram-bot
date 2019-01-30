@@ -451,14 +451,27 @@ def postNewPostsToTelegram( new_posts, channel_id ):
 		# The KeyError usually caused by the hidden video link.  Just ignore it.
 		except KeyError as e:
 			logger.error( 'Got Key Error, ignore the post from {}'.format( page_name ) )
+			logger.error( 'str( e ) = {}'.format( str( e ) ) )
+			logger.error( 'e.args = {}'.format( e.args ) )
 			telegram_bot.send_message(
 					chat_id = channel_id,
-					text = 'Key Error Exception from {}'.format( page_name ) )
+					text = 'Key Error from {}'.format( page_name ) )
+
+		# Tries to capture the Telegram Error
+		except TelegramError as e:
+			logger.error( 'Got Telegram Error, ignore the post from {}'.format( page_name ) )
+			logger.error( 'str( e ) = {}'.format( str( e ) ) )
+			logger.error( 'e.args = {}'.format( e.args ) )
+			logger.error( 'e.message = {}'.format( e.message ) )
+			telegram_bot.send_message(
+					chat_id = channel_id,
+					text = 'Telegram Error from {}'.format( page_name ) )
 		# If got error, send a message to the channel.
 		except Exception as e:
 			msg = 'Unknown Error type "{}" when processing page {}'.format( type( e ), page_name )
 			logger.error( msg )
-			logger.error( e.args )
+			logger.error( 'str( e ) = {}'.format( str( e ) ) )
+			logger.error( 'e.args = {}'.format( e.args ) )
 			telegram_bot.send_message( chat_id = channel_id, text = msg )
 
 		finally:
