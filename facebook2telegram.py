@@ -377,6 +377,10 @@ def checkIfAllowedAndPost( post, bot, chat_id ):
 	if 'message' in post and configurations['allow_message']:
 		post_message = post['message']
 
+	# The post_message must be empty to prevent Telegram Error
+	if not post_message:
+		post_message = 'Empty Message'
+
 
 	# Calling the function according to the type of the post.
 	# The type of a post could be: link, status, photo, video, and offer
@@ -393,8 +397,8 @@ def checkIfAllowedAndPost( post, bot, chat_id ):
 	elif post['type'] == 'status' and configurations['allow_status']:
 		logger.info( 'Posting status...' )
 		bot.send_message(
-			chat_id=chat_id,
-			text=post['message'] )
+				chat_id = chat_id,
+				text = post_message )
 		return True
 
 	elif post['type'] == 'link' and configurations['allow_link']:
