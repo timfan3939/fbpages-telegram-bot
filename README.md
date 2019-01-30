@@ -21,11 +21,10 @@ fbpages-telegram-bot uses Python 3 (developed and tested with version 3.6.0), wh
 You'll also need the following packages:
 * `python-telegram-bot`
 * `facebook-sdk`
-* `youtube-dl`
 
 These can all be installed with:
 
-``pip3 install python-telegram-bot, facebook-sdk, youtube-dl ``
+``pip3 install python-telegram-bot, facebook-sdk ``
 
 on both Windows's Command Prompt and Linux's terminal.
 

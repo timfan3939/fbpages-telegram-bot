@@ -48,10 +48,6 @@ logging.basicConfig(
 			atTime = datetime( year=2018, month=1, day=1, hour=0, minute=0, second=0 ).time() ) ] )
 logger = logging.getLogger(__name__)
 
-# youtube-dl. Removal is pending
-import youtube_dl
-ydl = youtube_dl.YoutubeDL({'outtmpl': '%(id)s%(ext)s'})
-
 
 # ======================================================== #
 
@@ -283,52 +279,29 @@ def checkNewPagesExistness( facebook_pages ):
 		sleep(10)
 
 
-def getDirectURLVideo(video_id):
-	"""
-	Get direct URL for the video using GraphAPI and the post's 'object_id'
-	"""
-	logger.info('Getting direct URL...')
-	video_post = facebook_graph.get_object(
-			id=video_id,
-			fields='source')
-
-	return video_post['source']
-
-
-def getDirectURLVideoYDL(URL):
-	"""
-	Get direct URL for the video using youtube-dl
-	"""
-	try:
-		with ydl:
-			result = ydl.extract_info(URL, download=False) #Just get the link
-
-		#Check if it's a playlist
-		if 'entries' in result:
-			video = result['entries'][0]
-		else:
-			video = result
-
-		return video['url']
-	except youtube_dl.utils.DownloadError:
-		logger.info('youtube-dl failed to parse URL.')
-		return None
-
-
 def postPhotoToChat( post, post_message, bot, chat_id ):
 	# Send the post's (resized) picture with the message.
 	try:
-		message = bot.send_photo(
-				chat_id = chat_id,
-				photo = post['full_picture'],
-				caption = post_message,
-				timeout = 120 )
-		return message
+		# If the status is longer than 200 character, we send the
+		# media and the status seperatedly.
+		if len( post_message ) < 200:
+			bot.send_photo(
+					chat_id = chat_id,
+					photo = post['full_picture'],
+					caption = post_message,
+					timeout = 120 )
+		else:
+			tg_msg = bot.send_photo(
+					chat_id = chat_id,
+					photo = post['full_picture'],
+					caption = '',
+					timeout = 120 )
+			tg_msg.reply_text( post_message )
 
-	# If the bot did not send the photo successfully, just send the link
-	# to client
+	# If the bot did not send the photo successfully, just send the
+	# link to client
 	except ( BadRequest, TimedOut ):
-		msg = 'Picture handling failed.  Direct link to the picture: {}\n--\n{}'.format( direct_link, post_message )
+		msg = 'Picture handling failed.  Here is the link of the picture: {}\n--\n{}'.format( post['full_picture'], post_message )
 		message = bot.send_message(
 				chat_id = chat_id,
 				text = msg )
@@ -336,91 +309,37 @@ def postPhotoToChat( post, post_message, bot, chat_id ):
 
 
 def postVideoToChat(post, post_message, bot, chat_id):
-	"""
-	This function tries to pass 3 different URLs to the Telegram API
-	instead of downloading the video file locally to save bandwidth.
+	# Send the post's video link with the message
 
-	*First option":  Direct video source
-	*Second option": Direct video source from youtube-dl
-	*Third option":  Direct video source with smaller resolution
-	"Fourth option": Download file locally for upload
-	"Fifth option":  Send the video link
-	"""
-	#If youtube link, post the link and short text if exists
-	if 'caption' in post and post['caption'] == 'youtube.com':
-		if post_message:
-			logger.info( 'Send post message with Youtube Link' )
-			bot.send_message( chat_id = chat_id, text = post_message )
-		else:
-			logger.info('Sending YouTube link...')
-			bot.send_message(
-				chat_id=chat_id,
-				text=post['link'])
+	video_info = ''
+	# Three possible places that can get the link of the video.
+	if 'caption' in post:
+		video_info = 'Caption: {}'.format( post['caption'] )
+	elif 'source' in post:
+		video_info = 'Source: {}'.format( post['source'] )
+	elif 'object_id' in post:
+		video_info = 'object_id: {}'.format( post['object_id'] )
 	else:
-		if 'object_id' in post:
-			direct_link = getDirectURLVideo(post['object_id'])
+		video_info = 'Does not exist.'
 
-		try:
-			message = bot.send_video(
-				chat_id=chat_id,
-				video=direct_link,
-				caption=post_message)
-			return message
+	msg = 'Video Info: {}'.format( video_info )
 
-		except TelegramError:        #If the API can't send the video
-			try:
-				logger.info('Could not post video, trying youtube-dl...')
-				message = bot.send_video(
-					chat_id=chat_id,
-					video=getDirectURLVideoYDL(post['link']),
-					caption=post_message)
-				return message
+	tg_msg = bot.send_message(
+			chat_id = chat_id,
+			text = msg )
+	tg_msg.reply_text( post_message )
 
-			except TelegramError:
-				try:
-					logger.warning('Could not post video, trying smaller res...')
-					message = bot.send_video(
-						chat_id=chat_id,
-						video=post['source'],
-						caption=post_message)
-					return message
-
-				except TelegramError:    #If it still can't send the video
-					try:
-						logger.warning('Sending by URL failed, downloading file...')
-						request.urlretrieve(post['source'],
-											working_directory+'/temp.mp4')
-						logger.info('Sending file...')
-						with open(working_directory+'/temp.mp4', 'rb') as video:
-							message = bot.send_video(
-								chat_id=chat_id,
-								video=video,
-								caption=post_message,
-								timeout=120)
-						remove(working_directory+'/temp.mp4')   #Delete the temp video
-						return message
-					except NetworkError:
-						logger.warning('Could not post video, sending link...')
-						message = bot.send_message(#Send direct link as message
-							chat_id=chat_id,
-							text=direct_link+'\n'+post_message)
-						return message
 
 
 def postLinkToChat(post, post_message, bot, chat_id):
-	"""
-	Checks if the post has a message with its link in it. If it does,
-	it sends only the message. If not, it sends the link followed by the
-	post's message.
-	"""
-	if post['link'] in post_message:
-		post_link = ''
-	else:
-		post_link = post['link']
+	# Send the link with the message
 
-	bot.send_message(
-		chat_id=chat_id,
-		text=post_link+'\n'+post_message)
+	msg = 'Shared Link: {}'.format( post['link'] )
+	tg_msg = bot.send_message(
+			chat_id = chat_id,
+			text = msg )
+	tg_msg.reply_text( post_message )
+
 
 
 def checkIfAllowedAndPost( post, bot, chat_id ):
@@ -441,7 +360,6 @@ def checkIfAllowedAndPost( post, bot, chat_id ):
 					'type',
 					'message',
 					'full_picture',
-					'story',
 					'source',
 					'link',
 					'caption',
@@ -455,43 +373,32 @@ def checkIfAllowedAndPost( post, bot, chat_id ):
 	# If there's a message in the post, and it's allowed by the
 	# configurations file, store it in 'post_message', which will be passed to
 	# another function based on the post type.
+	post_message = ''
 	if 'message' in post and configurations['allow_message']:
 		post_message = post['message']
-	else:
-		post_message = ''
 
-	# Telegram doesn't allow media captions with more than 200 characters
-	# Send separate message with the post's message
-	if ( len( post_message ) > 200 ) and \
-						( post['type'] == 'photo' or post['type'] == 'video' ):
-		separate_message = post_message
-		post_message = ''
-		send_separate = True
-	else:
-		separate_message = ''
-		send_separate = False
+	# The post_message must be empty to prevent Telegram Error
+	if not post_message:
+		post_message = 'Empty Message'
+
 
 	# Calling the function according to the type of the post.
 	# The type of a post could be: link, status, photo, video, and offer
 	if post['type'] == 'photo' and configurations['allow_photo']:
 		logger.info( 'Posting photo...' )
-		media_message = postPhotoToChat( post, post_message, bot, chat_id )
-		if send_separate:
-			media_message.reply_text( separate_message )
+		postPhotoToChat( post, post_message, bot, chat_id )
 		return True
 
 	elif post['type'] == 'video' and configurations['allow_video']:
 		logger.info( 'Posting video...' )
-		media_message = postVideoToChat( post, post_message, bot, chat_id )
-		if send_separate:
-			media_message.reply_text( separate_message )
+		postVideoToChat( post, post_message, bot, chat_id )
 		return True
 
 	elif post['type'] == 'status' and configurations['allow_status']:
 		logger.info( 'Posting status...' )
 		bot.send_message(
-			chat_id=chat_id,
-			text=post['message'])
+				chat_id = chat_id,
+				text = post_message )
 		return True
 
 	elif post['type'] == 'link' and configurations['allow_link']:
@@ -500,8 +407,8 @@ def checkIfAllowedAndPost( post, bot, chat_id ):
 		return True
 
 	else:
-		logger.warning('This post is a {}, skipping...'.format(post['type']))
-		bot.send_message("The post's type is {}, skipping".format(post['type']))
+		logger.warning( 'This post is a {}, skipping...'.format( post['type'] ) )
+		bot.send_message( "The post's type is {}, skipping".format( post['type'] ) )
 		return False
 
 
@@ -534,6 +441,7 @@ def postNewPostsToTelegram( new_posts, channel_id ):
 		except Exception as e:
 			msg = 'Unknown Error type "{}" when sending the prelogue of {}'.format( type( e ), page_name )
 			logger.error( msg )
+			logger.error( e.args )
 			telegram_bot.send_message( chat_id = channel_id, text = msg )
 			continue
 
@@ -547,13 +455,27 @@ def postNewPostsToTelegram( new_posts, channel_id ):
 		# The KeyError usually caused by the hidden video link.  Just ignore it.
 		except KeyError as e:
 			logger.error( 'Got Key Error, ignore the post from {}'.format( page_name ) )
+			logger.error( 'str( e ) = {}'.format( str( e ) ) )
+			logger.error( 'e.args = {}'.format( e.args ) )
 			telegram_bot.send_message(
 					chat_id = channel_id,
-					text = 'Key Error Exception from {}'.format( page_name ) )
+					text = 'Key Error from {}'.format( page_name ) )
+
+		# Tries to capture the Telegram Error
+		except TelegramError as e:
+			logger.error( 'Got Telegram Error, ignore the post from {}'.format( page_name ) )
+			logger.error( 'str( e ) = {}'.format( str( e ) ) )
+			logger.error( 'e.args = {}'.format( e.args ) )
+			logger.error( 'e.message = {}'.format( e.message ) )
+			telegram_bot.send_message(
+					chat_id = channel_id,
+					text = 'Telegram Error from {}'.format( page_name ) )
 		# If got error, send a message to the channel.
 		except Exception as e:
 			msg = 'Unknown Error type "{}" when processing page {}'.format( type( e ), page_name )
 			logger.error( msg )
+			logger.error( 'str( e ) = {}'.format( str( e ) ) )
+			logger.error( 'e.args = {}'.format( e.args ) )
 			telegram_bot.send_message( chat_id = channel_id, text = msg )
 
 		finally:
@@ -636,18 +558,17 @@ def pullPostsFromFacebook( bot, tg_channel_id ):
 
 	updateFacebookPageListForRequest()
 
-	page_field = [	'name', 'posts' ]
-	post_field = [	'created_time',
-					'type',
-					'message',
-					'full_picture',
-					'story',
-					'source',
-					'link',
-					'caption',
-					'parent_id',
-					'object_id',
-					'permalink_url' ]
+	page_field = [	'name', 'posts' ]	# The name of the page, the feed of posts
+	post_field = [	'created_time',		# The time the post published
+					'type',				# The type of the post (link, status, photo, video, offer)
+					'message',			# The status message in the post
+					'full_picture',		# The image of the post
+					'source',			# URL of the video or other objects in the post
+					'link',				# The link attached to the post
+					'caption',			# The link's caption in the post
+					'parent_id',		# The ID of a parent post for this post
+					'object_id',		# The ID of uploaded photo or video
+					'permalink_url' ]	# The URL of the post
 	request_field = ','.join( page_field ) \
 					+ '{}{}{}'.format( '{', ','.join( post_field ), '}' )
 	logger.info( 'requesting field: {}'.format( request_field ) )
@@ -670,7 +591,7 @@ def pullPostsFromFacebook( bot, tg_channel_id ):
 		# Send a message of error to the channel
 		msg = 'Could not get facebook posts.\nMessage: {}\nType: {}\nCode: {}\nResult:{}'.format(
 				err.message, err.type, err.code, err.result )
-		bot.send_message( chat_id = chat_id, text = msg )
+		bot.send_message( chat_id = tg_channel_id, text = msg )
 
 		# Extends the refresh rate no matter what the error is.
 		configurations['facebook_refresh_rate'] *= 2
@@ -680,9 +601,10 @@ def pullPostsFromFacebook( bot, tg_channel_id ):
 
 	except Exception as err:
 		# In case there are errors other than facebook's error
-		msg = 'Got Unknown Exception: {}'.format( str( err ) )
-		bog.send_message( chat_id = tg_channel_id, text = msg )
+		msg = 'Got Unknown Exception when fetching from facebook: {}'.format( str( err ) )
 		logger.error( msg )
+		logger.error( err.args )
+		bot.send_message( chat_id = tg_channel_id, text = msg )
 		return
 
 	logger.info( 'Successfully fetching posts from facebook' )
@@ -696,15 +618,21 @@ def pullPostsFromFacebook( bot, tg_channel_id ):
 		rateLimitStatus = getRateLimitStatus()
 		msg = '=== Rate Limit Status ===\ncall_count: {}\ntotal_time: {}\ntotal_cputime: {}'.format(
 				rateLimitStatus['call_count'], rateLimitStatus['total_time'], rateLimitStatus['total_cputime'] )
-		bot.send_message( chat_id = chat_id, text = msg )
+		bot.send_message( chat_id = tg_channel_id, text = msg )
 	logger.info( 'The bot has posted all the new posts from this fetch.' )
 
 def periodicPullFromFacebook( bot, job ):
 	# Create the next job
 	createNextFacebookJob( bot )
 
-	# The job.context has the telegram channel ID
-	pullPostsFromFacebook( bot, job.context )
+	try:
+		# The job.context has the telegram channel ID
+		pullPostsFromFacebook( bot, job.context )
+	except Exception as err:
+		msg = 'Got Unknown Exception when calling pullPostsFromFacebook: {}'.format( str( err ) )
+		logger.error( msg )
+		logger.error( err.args )
+		bot.send_message( chat_id = job.context, text = msg )
 
 
 
