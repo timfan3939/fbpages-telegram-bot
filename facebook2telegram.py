@@ -733,7 +733,12 @@ class BotControlHandler:
 
 	@staticmethod
 	def fireHandler( bot, update ):
+		if facebook_job:
+			facebook_job.schedule_removal()
+
 		pullPostsFromFacebook( bot, configurations['channel_id'] )
+		createNextFacebookJob( bot )
+
 		BotControlHandler.statusHandler( bot, update )
 
 	@staticmethod
@@ -761,7 +766,7 @@ class BotControlHandler:
 
 # ======================================================== #
 
-# ----- The main function #
+# ----- The main function ----- #
 
 def main():
 	global facebook_pages
