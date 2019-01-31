@@ -9,7 +9,6 @@ import configparser
 import json
 
 # File Handling
-from os import remove
 from os import path
 
 # For exiting the program
@@ -20,7 +19,6 @@ from time import sleep
 from datetime import datetime, timedelta
 
 # Download media
-from urllib import request
 import requests
 
 # telegram-bot-python and Errors
@@ -30,7 +28,6 @@ from telegram.error import TelegramError
 from telegram.error import InvalidToken
 from telegram.error import BadRequest
 from telegram.error import TimedOut
-from telegram.error import NetworkError
 
 # facebook-sdk
 import facebook
