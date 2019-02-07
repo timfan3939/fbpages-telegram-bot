@@ -71,11 +71,9 @@ telegram_job_queue = None
 
 
 def loadConfiguration( filename ):
-	"""
-	Loads the configurations from the .ini file
-	and stores them in global variables.
-	Use example.botsettings.ini as an example.
-	"""
+	# Loads the configurations from the .ini file
+	# and stores them in global variables.
+	# Use example.botsettings.ini as an example.
 
 	global configurations
 
@@ -128,17 +126,15 @@ def loadConfiguration( filename ):
 
 
 def loadFacebookGraph( facebook_token ):
-	"""
-	Initialize Facebook GraphAPI with the token loaded from the configurations file
-	"""
+	# Initialize Facebook GraphAPI with the token loaded from the configurations file
+
 	global facebook_graph
 	facebook_graph = facebook.GraphAPI( access_token = facebook_token, version = '3.0', timeout = 120 )
 
 
 def loadTelegramBot( telegram_token ):
-	"""
-	Initialize Telegram Bot API with the token loaded from the configurations file
-	"""
+	# Initialize Telegram Bot API with the token loaded from the configurations file
+
 	global telegram_bot
 	global telegram_updater
 	global telegram_dispatcher
@@ -155,19 +151,10 @@ def loadTelegramBot( telegram_token ):
 	telegram_job_queue = telegram_updater.job_queue
 
 
-def parsePostCreatedTime( post ):
-	"""
-	Get the post's created time from the given post's object.
-	"""
-	date_format = "%Y-%m-%dT%H:%M:%S+0000"
-	post_date = datetime.strptime( post['created_time'], date_format )
-	return post_date
-
 
 class JSONDatetimeEncoder( json.JSONEncoder ):
-	"""
-	Converts the 'datetime' type to an ISO timestamp for the JSON dumper
-	"""
+	# Converts the 'datetime' type to an ISO timestamp for the JSON dumper
+
 	def default( self, o ):
 		if isinstance( o, datetime ):
 			return o.isoformat()
@@ -175,11 +162,19 @@ class JSONDatetimeEncoder( json.JSONEncoder ):
 		return super( JSONDatetimeEncoder, self ).default( o )
 
 
+	@staticmethod
+	def parsePostCreatedTime( post ):
+		# Get the post's created time from the given post's object.
+
+		return datetime.strptime(
+				post['created_time'],
+				"%Y-%m-%dT%H:%M:%S+0000" )
+
+
 
 def dateTimeDecoder( pairs, date_format="%Y-%m-%dT%H:%M:%S" ):
-	"""
-	Converts the ISO timestamp to 'datetime' type for the JSON loader
-	"""
+	# Converts the ISO timestamp to 'datetime' type for the JSON loadera
+
 	d = {}
 
 	for k, v in pairs:
@@ -195,9 +190,8 @@ def dateTimeDecoder( pairs, date_format="%Y-%m-%dT%H:%M:%S" ):
 
 
 def loadLastUpdateRecordFromFile():
-	"""
-	Load and return the last update records from the given filename.
-	"""
+	# Load and return the last update records from the given filename.
+
 	with open( last_update_record_file, 'r' ) as f:
 		loaded_json = json.load( f, object_pairs_hook = dateTimeDecoder )
 
@@ -206,9 +200,8 @@ def loadLastUpdateRecordFromFile():
 
 
 def updateLastUpdateRecordToFile():
-	"""
-	Update the last update records to the specific file.
-	"""
+	# Update the last update records to the specific file.
+
 	with open( last_update_record_file, 'w' ) as f:
 		json.dump( obj = last_update_records,
 					fp = f,
@@ -221,14 +214,13 @@ def updateLastUpdateRecordToFile():
 
 
 def checkNewPagesExistness( facebook_pages ):
-	"""
-	Finds if the facebook_pages are in the last update record file.
-	If the last update record file does not exists, the function
-	creates an empty last update record file.
-	If any page in facebook_pages is not in the last update record
-	file, we fetch the last update time from facebook graph and store
-	it in the last update record file.
-	"""
+	# Finds if the facebook_pages are in the last update record file.
+	# If the last update record file does not exists, the function
+	# creates an empty last update record file.
+	# If any page in facebook_pages is not in the last update record
+	# file, we fetch the last update time from facebook graph and store
+	# it in the last update record file.
+
 	logger.info( 'Checking for new added pages.' )
 
 	global last_update_records
@@ -265,7 +257,7 @@ def checkNewPagesExistness( facebook_pages ):
 		for page in new_facebook_pages[startPage:endPage]:
 			try:
 				last_update_record = last_update_times[page]['posts']['data'][0]
-				last_update_records[page] = parsePostCreatedTime( last_update_record )
+				last_update_records[page] = JSONDatetimeEncoder.parsePostCreatedTime( last_update_record )
 				updateLastUpdateRecordToFile()
 				logger.info( 'Page {} ({}) went online.'.format( last_update_times[page]['name'], page ) )
 
@@ -278,6 +270,7 @@ def checkNewPagesExistness( facebook_pages ):
 
 def postPhotoToChat( post, post_message, bot, chat_id ):
 	# Send the post's (resized) picture with the message.
+
 	try:
 		# If the status is longer than 200 character, we send the
 		# media and the status seperatedly.
@@ -476,7 +469,7 @@ def postNewPostsToTelegram( new_posts, channel_id ):
 			telegram_bot.send_message( chat_id = channel_id, text = msg )
 
 		finally:
-			last_update_records[post['page_id']] = parsePostCreatedTime( post )
+			last_update_records[post['page_id']] = JSONDatetimeEncoder.parsePostCreatedTime( post )
 			updateLastUpdateRecordToFile()
 
 		# Sleep to prevent sends too frequently
@@ -496,7 +489,7 @@ def filterNewPosts( fb_page_ids, page_data, last_update_records ):
 			posts = page_data[page_id]['posts']['data']
 			new_posts = list(
 					filter(
-						lambda post: parsePostCreatedTime( post ) > last_update_records[page_id],
+						lambda post: JSONDatetimeEncoder.parsePostCreatedTime( post ) > last_update_records[page_id],
 						posts
 					) )
 
@@ -517,15 +510,14 @@ def filterNewPosts( fb_page_ids, page_data, last_update_records ):
 			continue
 
 	# Sort the new posts in chronological order
-	new_posts_result.sort( key=parsePostCreatedTime )
+	new_posts_result.sort( key=JSONDatetimeEncoder.parsePostCreatedTime )
 	return new_posts_result
 
 
 
 def updateFacebookPageListForRequest():
-	"""
-	Rotate the facebook pages for the next request.
-	"""
+	# Rotate the facebook pages for the next request.
+
 	global facebook_pages_request_index
 	global facebook_pages
 
@@ -534,7 +526,9 @@ def updateFacebookPageListForRequest():
 	facebook_pages_request_size = configurations['facebook_page_per_request']
 	facebook_pages_request_end = ( facebook_pages_request_index + facebook_pages_request_size ) % len( facebook_page_list )
 
-	logger.info( "Update page list for requesting the facebook ({}->{})...".format( facebook_pages_request_index, facebook_pages_request_end ) )
+	logger.info( "Update page list for requesting the facebook ({}->{})...".format(
+				facebook_pages_request_index, facebook_pages_request_end ) )
+
 	facebook_pages = []
 	while facebook_pages_request_index != facebook_pages_request_end:
 		facebook_pages.append( facebook_page_list[ facebook_pages_request_index ] )
@@ -543,17 +537,66 @@ def updateFacebookPageListForRequest():
 	logger.info( "Completed" )
 
 
+def checkForUpdates( pages ):
+	# Check the pages' latest post create time.
+	# If newer than our record, return the page's ID
+
+	fields = 'name,posts.limit(1){created_time}'
+	result = []
+
+	try:
+		last_update_times = facebook_graph.get_objects(
+				ids = pages,
+				fields = fields )
+
+
+	except facebook.GraphAPIError as err:
+		logger.error( 'Could not get posts\' records' )
+		logger.error( 'Message: {}'.format( err.message ) )
+		logger.error( 'Type: {}'.format( err.type ) )
+		logger.error( 'Code: {}'.format( err.code ) )
+		logger.error( 'Result: {}'.format( err.result ) )
+		return result
+
+	except Exception as err:
+		# In case there are errors other than facebook's error
+		msg = 'Got Unknown Exception when checking updates from facebook: {}'.format( str( err ) )
+		logger.error( msg )
+		logger.error( err.args )
+		return result
+
+	# Try to get the most update records as possible
+	for page_id in pages:
+		try:
+			last_update_time = JSONDatetimeEncoder.parsePostCreatedTime(
+					last_update_times[page_id]['posts']['data'][0] )
+
+			if last_update_time > last_update_records[page_id]:
+				result.append( page_id )
+		except Exception as err:
+			# In case there are errors other than facebook's error
+			msg = 'Got Unknown Exception when checking updates from facebook: {}'.format( str( err ) )
+			logger.error( msg )
+			logger.error( err.args )
+
+	return result
 
 def pullPostsFromFacebook( bot, tg_channel_id ):
-	"""
-	Checks for new posts for every page in the list loaded from the
-	configurations file, posts them, and updates the dates.json file, which
-	contains the date for the latest post posted to Telegram for every
-	page.
-	"""
+	# Checks for new posts for every page in the list loaded from the
+	# configurations file, posts them, and updates the dates.json file, which
+	# contains the date for the latest post posted to Telegram for every
+	# page.
+
 	global last_update_records
 
 	updateFacebookPageListForRequest()
+
+	# Check if any page has update
+	# If zero, this check is over
+	pages_has_updates = checkForUpdates( facebook_pages )
+	if len( pages_has_updates ) == 0:
+		logger.info( 'No updates found' )
+		return
 
 	page_field = [	'name', 'posts' ]	# The name of the page, the feed of posts
 	post_field = [	'created_time',		# The time the post published
@@ -572,11 +615,11 @@ def pullPostsFromFacebook( bot, tg_channel_id ):
 
 	try:
 		#Request to the GraphAPI with all the pages (list) and required fields
-		logger.info('Accessing Facebook...')
+		logger.info('Requesting for updates...')
 		facebook_fetch_result = facebook_graph.get_objects( \
-				ids=facebook_pages, \
+				ids = pages_has_updates, \
 				fields = request_field, \
-				locale=configurations['locale'] )
+				locale = configurations['locale'] )
 
 	except facebook.GraphAPIError as err:
 		logger.error( 'Could not get Facebook posts.' )
@@ -606,7 +649,7 @@ def pullPostsFromFacebook( bot, tg_channel_id ):
 
 	logger.info( 'Successfully fetching posts from facebook' )
 
-	new_posts_list = filterNewPosts( facebook_pages, facebook_fetch_result, last_update_records )
+	new_posts_list = filterNewPosts( pages_has_updates, facebook_fetch_result, last_update_records )
 	postNewPostsToTelegram( new_posts_list, tg_channel_id )
 
 	# By switching the show_usage_limit_status can tell you the business
@@ -634,10 +677,9 @@ def periodicPullFromFacebook( bot, job ):
 
 
 def createNextFacebookJob( bot ):
-	"""Create and schedule the next job for pulling the up-to-date posts
-	of the pages from the facebook.  We adjust the scheduling time to
-	prevent the bot makes too many request within a short period.
-	"""
+	# Create and schedule the next job for pulling the up-to-date posts
+	# of the pages from the facebook.  We adjust the scheduling time to
+	# prevent the bot makes too many request within a short period.
 	global facebook_job
 
 	configurations['facebook_refresh_rate'] -= 230.0
@@ -665,7 +707,7 @@ def error(bot, update, error):
 
 
 def getRateLimitStatus():
-	"""Get the current facebook Rait Limit"""
+	# Get the current facebook Rait Limit
 
 	url = 'https://graph.facebook.com/v3.0/me'
 	args = { 'access_token': configurations['facebook_token'] }
@@ -733,7 +775,12 @@ class BotControlHandler:
 
 	@staticmethod
 	def fireHandler( bot, update ):
+		if facebook_job:
+			facebook_job.schedule_removal()
+
 		pullPostsFromFacebook( bot, configurations['channel_id'] )
+		createNextFacebookJob( bot )
+
 		BotControlHandler.statusHandler( bot, update )
 
 	@staticmethod
@@ -761,7 +808,7 @@ class BotControlHandler:
 
 # ======================================================== #
 
-# ----- The main function #
+# ----- The main function ----- #
 
 def main():
 	global facebook_pages
