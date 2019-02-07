@@ -151,13 +151,6 @@ def loadTelegramBot( telegram_token ):
 	telegram_job_queue = telegram_updater.job_queue
 
 
-def parsePostCreatedTime( post ):
-	# Get the post's created time from the given post's object.
-
-	date_format = "%Y-%m-%dT%H:%M:%S+0000"
-	post_date = datetime.strptime( post['created_time'], date_format )
-	return post_date
-
 
 class JSONDatetimeEncoder( json.JSONEncoder ):
 	# Converts the 'datetime' type to an ISO timestamp for the JSON dumper
@@ -167,6 +160,15 @@ class JSONDatetimeEncoder( json.JSONEncoder ):
 			return o.isoformat()
 
 		return super( JSONDatetimeEncoder, self ).default( o )
+
+
+	@staticmethod
+	def parsePostCreatedTime( post ):
+		# Get the post's created time from the given post's object.
+
+		return datetime.strptime(
+				post['created_time'],
+				"%Y-%m-%dT%H:%M:%S+0000" )
 
 
 
@@ -255,7 +257,7 @@ def checkNewPagesExistness( facebook_pages ):
 		for page in new_facebook_pages[startPage:endPage]:
 			try:
 				last_update_record = last_update_times[page]['posts']['data'][0]
-				last_update_records[page] = parsePostCreatedTime( last_update_record )
+				last_update_records[page] = JSONDatetimeEncoder.parsePostCreatedTime( last_update_record )
 				updateLastUpdateRecordToFile()
 				logger.info( 'Page {} ({}) went online.'.format( last_update_times[page]['name'], page ) )
 
@@ -467,7 +469,7 @@ def postNewPostsToTelegram( new_posts, channel_id ):
 			telegram_bot.send_message( chat_id = channel_id, text = msg )
 
 		finally:
-			last_update_records[post['page_id']] = parsePostCreatedTime( post )
+			last_update_records[post['page_id']] = JSONDatetimeEncoder.parsePostCreatedTime( post )
 			updateLastUpdateRecordToFile()
 
 		# Sleep to prevent sends too frequently
@@ -487,7 +489,7 @@ def filterNewPosts( fb_page_ids, page_data, last_update_records ):
 			posts = page_data[page_id]['posts']['data']
 			new_posts = list(
 					filter(
-						lambda post: parsePostCreatedTime( post ) > last_update_records[page_id],
+						lambda post: JSONDatetimeEncoder.parsePostCreatedTime( post ) > last_update_records[page_id],
 						posts
 					) )
 
@@ -508,7 +510,7 @@ def filterNewPosts( fb_page_ids, page_data, last_update_records ):
 			continue
 
 	# Sort the new posts in chronological order
-	new_posts_result.sort( key=parsePostCreatedTime )
+	new_posts_result.sort( key=JSONDatetimeEncoder.parsePostCreatedTime )
 	return new_posts_result
 
 
@@ -524,7 +526,9 @@ def updateFacebookPageListForRequest():
 	facebook_pages_request_size = configurations['facebook_page_per_request']
 	facebook_pages_request_end = ( facebook_pages_request_index + facebook_pages_request_size ) % len( facebook_page_list )
 
-	logger.info( "Update page list for requesting the facebook ({}->{})...".format( facebook_pages_request_index, facebook_pages_request_end ) )
+	logger.info( "Update page list for requesting the facebook ({}->{})...".format(
+				facebook_pages_request_index, facebook_pages_request_end ) )
+
 	facebook_pages = []
 	while facebook_pages_request_index != facebook_pages_request_end:
 		facebook_pages.append( facebook_page_list[ facebook_pages_request_index ] )
@@ -533,6 +537,49 @@ def updateFacebookPageListForRequest():
 	logger.info( "Completed" )
 
 
+def checkForUpdates( pages ):
+	# Check the pages' latest post create time.
+	# If newer than our record, return the page's ID
+
+	fields = 'name,posts.limit(1){created_time}'
+	result = []
+
+	try:
+		last_update_times = facebook_graph.get_objects(
+				ids = pages,
+				fields = fields )
+
+
+	except facebook.GraphAPIError as err:
+		logger.error( 'Could not get posts\' records' )
+		logger.error( 'Message: {}'.format( err.message ) )
+		logger.error( 'Type: {}'.format( err.type ) )
+		logger.error( 'Code: {}'.format( err.code ) )
+		logger.error( 'Result: {}'.format( err.result ) )
+		return result
+
+	except Exception as err:
+		# In case there are errors other than facebook's error
+		msg = 'Got Unknown Exception when checking updates from facebook: {}'.format( str( err ) )
+		logger.error( msg )
+		logger.error( err.args )
+		return result
+
+	# Try to get the most update records as possible
+	for page_id in pages:
+		try:
+			last_update_time = JSONDatetimeEncoder.parsePostCreatedTime(
+					last_update_times[page_id]['posts']['data'][0] )
+
+			if last_update_time > last_update_records[page_id]:
+				result.append( page_id )
+		except Exception as err:
+			# In case there are errors other than facebook's error
+			msg = 'Got Unknown Exception when checking updates from facebook: {}'.format( str( err ) )
+			logger.error( msg )
+			logger.error( err.args )
+
+	return result
 
 def pullPostsFromFacebook( bot, tg_channel_id ):
 	# Checks for new posts for every page in the list loaded from the
@@ -543,6 +590,13 @@ def pullPostsFromFacebook( bot, tg_channel_id ):
 	global last_update_records
 
 	updateFacebookPageListForRequest()
+
+	# Check if any page has update
+	# If zero, this check is over
+	pages_has_updates = checkForUpdates( facebook_pages )
+	if len( pages_has_updates ) == 0:
+		logger.info( 'No updates found' )
+		return
 
 	page_field = [	'name', 'posts' ]	# The name of the page, the feed of posts
 	post_field = [	'created_time',		# The time the post published
@@ -561,11 +615,11 @@ def pullPostsFromFacebook( bot, tg_channel_id ):
 
 	try:
 		#Request to the GraphAPI with all the pages (list) and required fields
-		logger.info('Accessing Facebook...')
+		logger.info('Requesting for updates...')
 		facebook_fetch_result = facebook_graph.get_objects( \
-				ids=facebook_pages, \
+				ids = pages_has_updates, \
 				fields = request_field, \
-				locale=configurations['locale'] )
+				locale = configurations['locale'] )
 
 	except facebook.GraphAPIError as err:
 		logger.error( 'Could not get Facebook posts.' )
@@ -595,7 +649,7 @@ def pullPostsFromFacebook( bot, tg_channel_id ):
 
 	logger.info( 'Successfully fetching posts from facebook' )
 
-	new_posts_list = filterNewPosts( facebook_pages, facebook_fetch_result, last_update_records )
+	new_posts_list = filterNewPosts( pages_has_updates, facebook_fetch_result, last_update_records )
 	postNewPostsToTelegram( new_posts_list, tg_channel_id )
 
 	# By switching the show_usage_limit_status can tell you the business
