@@ -256,8 +256,9 @@ def checkNewPagesExistness( facebook_pages ):
 
 		for page in new_facebook_pages[startPage:endPage]:
 			try:
+				# Substract with 1 second to enfores the bot post the latest post of the page
 				last_update_record = last_update_times[page]['posts']['data'][0]
-				last_update_records[page] = JSONDatetimeEncoder.parsePostCreatedTime( last_update_record )
+				last_update_records[page] = JSONDatetimeEncoder.parsePostCreatedTime( last_update_record ) - timedelta( seconds = 1 )
 				updateLastUpdateRecordToFile()
 				logger.info( 'Page {} ({}) went online.'.format( last_update_times[page]['name'], page ) )
 
