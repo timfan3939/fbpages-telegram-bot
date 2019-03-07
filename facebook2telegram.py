@@ -85,7 +85,7 @@ def loadConfiguration( filename ):
 		configurations['locale'] = config.get( 'facebook', 'locale' )
 		configurations['facebook_token'] = config.get( 'facebook', 'token' )
 		configurations['facebook_pages'] = ast.literal_eval( config.get('facebook', 'pages' ) )
-		configurations['facebook_refresh_rate'] = 1900.0
+		configurations['facebook_refresh_rate'] = 71.0
 		configurations['facebook_refresh_rate_default'] = float( config.get( 'facebook', 'refreshrate' ) )
 		configurations['facebook_page_per_request'] = int( config.get( 'facebook', 'pageperrequest' ) )
 		configurations['allow_status'] = config.getboolean( 'facebook', 'status' )
@@ -257,7 +257,8 @@ def checkNewPagesExistness( facebook_pages ):
 		for page in new_facebook_pages[startPage:endPage]:
 			try:
 				last_update_record = last_update_times[page]['posts']['data'][0]
-				last_update_records[page] = JSONDatetimeEncoder.parsePostCreatedTime( last_update_record )
+				# Substract with 1 second to enfores the bot post the latest post of the page
+				last_update_records[page] = JSONDatetimeEncoder.parsePostCreatedTime( last_update_record ) - timedelta( seconds = 1 )
 				updateLastUpdateRecordToFile()
 				logger.info( 'Page {} ({}) went online.'.format( last_update_times[page]['name'], page ) )
 
@@ -526,8 +527,8 @@ def updateFacebookPageListForRequest():
 	facebook_pages_request_size = configurations['facebook_page_per_request']
 	facebook_pages_request_end = ( facebook_pages_request_index + facebook_pages_request_size ) % len( facebook_page_list )
 
-	logger.info( "Update page list for requesting the facebook ({}->{})...".format(
-				facebook_pages_request_index, facebook_pages_request_end ) )
+	logger.info( "Update page list for requesting the facebook ({}->{})/{}...".format(
+				facebook_pages_request_index, facebook_pages_request_end, len( facebook_page_list ) ) )
 
 	facebook_pages = []
 	while facebook_pages_request_index != facebook_pages_request_end:
