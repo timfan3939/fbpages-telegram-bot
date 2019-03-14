@@ -557,6 +557,11 @@ def checkForUpdates( pages ):
 		logger.error( 'Type: {}'.format( err.type ) )
 		logger.error( 'Code: {}'.format( err.code ) )
 		logger.error( 'Result: {}'.format( err.result ) )
+
+		# Extends the refresh rate no matter what the error is.
+		configurations['facebook_refresh_rate'] *= 5
+		logger.error( msg )
+		logger.error( 'Extend refresh rate to {}.'.format( configurations['facebook_refresh_rate'] ) )
 		return result
 
 	except Exception as err:
