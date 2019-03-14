@@ -635,7 +635,7 @@ def pullPostsFromFacebook( bot, tg_channel_id ):
 		bot.send_message( chat_id = tg_channel_id, text = msg )
 
 		# Extends the refresh rate no matter what the error is.
-		configurations['facebook_refresh_rate'] *= 2
+		configurations['facebook_refresh_rate'] *= 5
 		logger.error( msg )
 		logger.error( 'Extend refresh rate to {}.'.format( configurations['facebook_refresh_rate'] ) )
 		return
