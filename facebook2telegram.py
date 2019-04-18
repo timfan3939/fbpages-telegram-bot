@@ -635,8 +635,8 @@ def pullPostsFromFacebook( bot, tg_channel_id ):
 		logger.error( 'Result: {}'.format( err.result ) )
 
 		# Send a message of error to the channel
-		msg = 'Could not get facebook posts.\nMessage: {}\nType: {}\nCode: {}\nResult:{}'.format(
-				err.message, err.type, err.code, err.result )
+		msg = 'Could not get pages\' posts:\n{}\n---\nMessage: {}\nType: {}\nCode: {}\nResult:{}'.format(
+				'\n'.join(pages_has_updates), err.message, err.type, err.code, err.result )
 		bot.send_message( chat_id = tg_channel_id, text = msg )
 
 		# Extends the refresh rate no matter what the error is.
