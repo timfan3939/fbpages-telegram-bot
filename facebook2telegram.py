@@ -305,13 +305,13 @@ def postVideoToChat(post, post_message, bot, chat_id):
 	video_info = ''
 	# Three possible places that can get the link of the video.
 	if 'caption' in post:
-		video_info = 'Caption: {}'.format( post['caption'] )
-	elif 'source' in post:
-		video_info = 'Source: {}'.format( post['source'] )
-	elif 'object_id' in post:
-		video_info = 'object_id: {}'.format( post['object_id'] )
-	else:
-		video_info = 'Does not exist.'
+		video_info = video_info + 'Caption: {}'.format( post['caption'] )
+	if 'source' in post:
+		video_info = video_info + 'Source: {}'.format( post['source'] )
+	if 'object_id' in post:
+		video_info = video_info + 'object_id: {}'.format( post['object_id'] )
+	if video_info == '':
+		video_info = 'Video Info does not exist.'
 
 	msg = 'Video Info: {}'.format( video_info )
 
