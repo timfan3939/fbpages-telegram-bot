@@ -412,15 +412,15 @@ def postNewPostsToTelegram( new_posts, channel_id ):
 
 	for post in new_posts:
 		post_left -= 1
-		page_name = '{} ( {} )'.format( post['page_name'], post['page_id'] )
+		page_name = '{} ( {} )'.format( post.get( 'page_name', '"Page Name" not found' ), post.get( 'page_id', '"Page ID" not found' ) )
 		logger.info( 'Posting NEW post from {}'.format( page_name ) )
 
 		# Send a prelogue before the main content.
 		# The bot also sends the link in case the post cannot be posted correctly.
 		try:
 			prelogue =	'{} updated a post.\n'.format( page_name.replace( '_', '\_' ) ) \
-						+ 'Time (UTC): {}\n\n'.format( post['created_time'] ) \
-						+ '>>> [Link to the Post]({}) <<<'.format( post['permalink_url'] )
+						+ 'Time (UTC): {}\n\n'.format( post.get( 'created_time', 'Create Time not found' ) ) \
+						+ '>>> [Link to the Post]({}) <<<'.format( post.get( 'permalink_url', 'https://www.facebook.com/{}/'.format( post.get( 'page_id', '' ) ) ) )
 
 			telegram_bot.send_message(
 					chat_id = channel_id,
