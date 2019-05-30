@@ -305,13 +305,13 @@ def postVideoToChat(post, post_message, bot, chat_id):
 	video_info = ''
 	# Three possible places that can get the link of the video.
 	if 'caption' in post:
-		video_info = 'Caption: {}'.format( post['caption'] )
-	elif 'source' in post:
-		video_info = 'Source: {}'.format( post['source'] )
-	elif 'object_id' in post:
-		video_info = 'object_id: {}'.format( post['object_id'] )
-	else:
-		video_info = 'Does not exist.'
+		video_info = video_info + 'Caption: {}'.format( post['caption'] )
+	if 'source' in post:
+		video_info = video_info + 'Source: {}'.format( post['source'] )
+	if 'object_id' in post:
+		video_info = video_info + 'object_id: {}'.format( post['object_id'] )
+	if video_info == '':
+		video_info = 'Video Info does not exist.'
 
 	msg = 'Video Info: {}'.format( video_info )
 
@@ -412,15 +412,15 @@ def postNewPostsToTelegram( new_posts, channel_id ):
 
 	for post in new_posts:
 		post_left -= 1
-		page_name = '{} ( {} )'.format( post['page_name'], post['page_id'] )
+		page_name = '{} ( {} )'.format( post.get( 'page_name', '"Page Name" not found' ), post.get( 'page_id', '"Page ID" not found' ) )
 		logger.info( 'Posting NEW post from {}'.format( page_name ) )
 
 		# Send a prelogue before the main content.
 		# The bot also sends the link in case the post cannot be posted correctly.
 		try:
 			prelogue =	'{} updated a post.\n'.format( page_name.replace( '_', '\_' ) ) \
-						+ 'Time (UTC): {}\n\n'.format( post['created_time'] ) \
-						+ '>>> [Link to the Post]({}) <<<'.format( post['permalink_url'] )
+						+ 'Time (UTC): {}\n\n'.format( post.get( 'created_time', 'Create Time not found' ) ) \
+						+ '>>> [Link to the Post]({}) <<<'.format( post.get( 'permalink_url', 'https://www.facebook.com/{}/'.format( post.get( 'page_id', '' ) ) ) )
 
 			telegram_bot.send_message(
 					chat_id = channel_id,
@@ -557,6 +557,11 @@ def checkForUpdates( pages ):
 		logger.error( 'Type: {}'.format( err.type ) )
 		logger.error( 'Code: {}'.format( err.code ) )
 		logger.error( 'Result: {}'.format( err.result ) )
+
+		# Extends the refresh rate no matter what the error is.
+		configurations['facebook_refresh_rate'] *= 5
+		logger.error( msg )
+		logger.error( 'Extend refresh rate to {}.'.format( configurations['facebook_refresh_rate'] ) )
 		return result
 
 	except Exception as err:
@@ -630,12 +635,12 @@ def pullPostsFromFacebook( bot, tg_channel_id ):
 		logger.error( 'Result: {}'.format( err.result ) )
 
 		# Send a message of error to the channel
-		msg = 'Could not get facebook posts.\nMessage: {}\nType: {}\nCode: {}\nResult:{}'.format(
-				err.message, err.type, err.code, err.result )
+		msg = 'Could not get pages\' posts:\n{}\n---\nMessage: {}\nType: {}\nCode: {}\nResult:{}'.format(
+				'\n'.join(pages_has_updates), err.message, err.type, err.code, err.result )
 		bot.send_message( chat_id = tg_channel_id, text = msg )
 
 		# Extends the refresh rate no matter what the error is.
-		configurations['facebook_refresh_rate'] *= 2
+		configurations['facebook_refresh_rate'] *= 5
 		logger.error( msg )
 		logger.error( 'Extend refresh rate to {}.'.format( configurations['facebook_refresh_rate'] ) )
 		return
