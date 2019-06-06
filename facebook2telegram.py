@@ -302,18 +302,15 @@ def postPhotoToChat( post, post_message, bot, chat_id ):
 def postVideoToChat(post, post_message, bot, chat_id):
 	# Send the post's video link with the message
 
-	video_info = ''
+	msg = 'Video Info:\n'
+
 	# Three possible places that can get the link of the video.
 	if 'caption' in post:
-		video_info = video_info + 'Caption: {}'.format( post['caption'] )
+		msg = msg + '  Caption: {}\n'.format( post['caption'] )
 	if 'source' in post:
-		video_info = video_info + 'Source: {}'.format( post['source'] )
+		msg = msg + '  Source: {}\n'.format( post['source'] )
 	if 'object_id' in post:
-		video_info = video_info + 'object_id: {}'.format( post['object_id'] )
-	if video_info == '':
-		video_info = 'Video Info does not exist.'
-
-	msg = 'Video Info: {}'.format( video_info )
+		msg = msg + '  object_id: {}\n'.format( post['object_id'] )
 
 	tg_msg = bot.send_message(
 			chat_id = chat_id,
